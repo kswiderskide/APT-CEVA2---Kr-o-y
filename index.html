@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CEVA2 - Podział Tras</title>
+    <title>CEVA2 - Inteligentny Czas</title>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDEq-AGhrBol0dkthbxNiH9MwSY-BMrD9s&libraries=geometry,directions"></script>
 
@@ -11,22 +11,18 @@
         :root { --bg: #0b1120; --card: #1e293b; --blue: #38bdf8; --green: #22c55e; --red: #ef4444; --gold: #fbbf24; }
         body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; }
         
-        /* DWA RZĘDY PRZYCISKÓW */
         .nav-label { font-size: 0.8rem; color: #666; font-weight: bold; margin-bottom: 4px; text-transform: uppercase; }
         .nav-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; flex-shrink: 0; }
         .btn-s { background: var(--card); color: #aaa; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; font-weight: bold; white-space: nowrap; font-size: 0.9rem; }
         .btn-s.active { background: var(--blue); color: black; border-color: white; }
 
-        /* LICZNIK */
         .display { background: var(--card); border: 1px solid #334155; border-radius: 20px; padding: 12px; text-align: center; margin-bottom: 10px; flex-shrink: 0; }
         #stop-name { color: var(--blue); font-size: 1.6rem; font-weight: bold; margin: 0; text-transform: uppercase; }
-        #timer { font-size: 3.8rem; font-weight: bold; margin: 2px 0; color: var(--green); }
+        #timer { font-size: 3.8rem; font-weight: bold; margin: 2px 0; }
         #gps-msg { color: var(--gold); font-weight: bold; font-size: 1.1rem; }
 
-        /* MAPA */
         #map { flex: 1; width: 100%; border-radius: 15px; background: #111; margin-bottom: 10px; border: 2px solid var(--blue); }
 
-        /* STEROWANIE */
         .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 70px; margin-bottom: 5px; flex-shrink: 0; }
         .btn-nav { background: var(--card); color: white; border: 1px solid #444; border-radius: 15px; font-size: 1.1rem; font-weight: bold; }
         #btn-next { border: 2px solid var(--blue); color: var(--blue); }
@@ -56,7 +52,6 @@
     </div>
 
 <script>
-    // --- BAZA DANYCH ---
     var schedules = {
         "06:00": [ { "n": "RACULKA", "t": "04:47", "la": 51.93288, "ln": 15.54993 }, { "n": "WAZÓW", "t": "04:55", "la": 51.94536, "ln": 15.52031 }, { "n": "CENTRUM", "t": "04:58", "la": 51.94313, "ln": 15.50797 }, { "n": "SOBKOWIAKA", "t": "05:05", "la": 51.96132, "ln": 15.49857 }, { "n": "SULECHÓW", "t": "05:25", "la": 52.08334, "ln": 15.62666 }, { "n": "BRAMA 1", "t": "05:50", "la": 52.09099, "ln": 15.64957 }, { "n": "BRAMA 2", "t": "06:00", "la": 52.0941, "ln": 15.66049 } ],
         "10:00": [ { "n": "RACULKA", "t": "08:47", "la": 51.93288, "ln": 15.54993 }, { "n": "WAZÓW", "t": "08:55", "la": 51.94536, "ln": 15.52031 }, { "n": "CENTRUM", "t": "08:58", "la": 51.94313, "ln": 15.50797 }, { "n": "SOBKOWIAKA", "t": "09:05", "la": 51.96132, "ln": 15.49857 }, { "n": "SULECHÓW", "t": "09:25", "la": 52.08334, "ln": 15.62666 }, { "n": "BRAMA 1", "t": "09:50", "la": 52.09099, "ln": 15.64957 }, { "n": "BRAMA 2", "t": "10:00", "la": 52.0941, "ln": 15.66049 } ],
@@ -80,18 +75,13 @@
 
     function initMap() {
         if(typeof google === 'undefined') return;
-        map = new google.maps.Map(document.getElementById("map"), { 
-            center: {lat: 51.93, lng: 15.54}, zoom: 14, mapTypeId: 'satellite', disableDefaultUI: true 
-        });
-        
+        map = new google.maps.Map(document.getElementById("map"), { center: {lat: 51.93, lng: 15.54}, zoom: 14, mapTypeId: 'satellite', disableDefaultUI: true });
         map.addListener("click", function() {
             var s = schedules[curr][idx];
             window.open("https://www.google.com/maps/dir/?api=1&destination=" + s.la + "," + s.ln + "&travelmode=driving", "_blank");
         });
-
         ds = new google.maps.DirectionsService();
         dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true });
-        
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(p => {
                 userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
@@ -114,15 +104,31 @@
         var bn = document.getElementById('btn-next');
         bn.innerText = (idx >= schedules[curr].length - 1) ? "KONIEC ✅" : "NASTĘPNY";
 
+        var timerEl = document.getElementById('timer');
+
         if(s.t === "---") {
             var now = new Date(); now.setMinutes(now.getMinutes() + liveDelay);
-            document.getElementById('timer').innerText = now.getHours() + ":" + (now.getMinutes()<10?'0':'') + now.getMinutes();
+            timerEl.innerText = now.getHours() + ":" + (now.getMinutes()<10?'0':'') + now.getMinutes();
+            timerEl.style.color = var(--blue);
             document.getElementById('gps-msg').innerText = "DOJAZD: " + liveDelay + " min";
         } else {
             var p = s.t.split(':'); var target = new Date(); target.setHours(p[0], p[1], 0);
             var diff = Math.ceil((target - new Date()) / 60000);
-            document.getElementById('timer').innerText = diff + " min";
-            document.getElementById('timer').style.color = (diff < 0) ? "red" : "#22c55e";
+            
+            // --- LOGIKA 90 MINUT ---
+            if (diff < -90) { 
+                diff += 1440; // Przeskocz na jutro dopiero po półtorej godziny spóźnienia
+            }
+            
+            timerEl.innerText = diff + " min";
+            
+            // Kolorowanie: Czerwony jeśli minęła godzina (ale jeszcze nie przeskoczyło na jutro)
+            if (diff < 0) {
+                timerEl.style.color = "var(--red)";
+            } else {
+                timerEl.style.color = "var(--green)";
+            }
+
             document.getElementById('gps-msg').innerText = "DO RUSZENIA: " + (diff - liveDelay) + " min";
         }
     }
@@ -136,14 +142,11 @@
         var w = document.getElementById('work-bar');
         var r = document.getElementById('return-bar');
         w.innerHTML = ""; r.innerHTML = "";
-
         for(var k in schedules) {
             var btn = document.createElement('button');
             btn.className = 'btn-s' + (k === curr ? ' active' : '');
             btn.innerText = k;
             btn.onclick = (function(v){ return function(){ curr=v; idx=0; renderNav(); refresh(); calc(); }; })(k);
-            
-            // Jeśli godzina kończy się na :00, daj do pracy, jeśli na :15, daj do powrotów
             if(k.includes(":00")) { w.appendChild(btn); }
             else { r.appendChild(btn); }
         }
