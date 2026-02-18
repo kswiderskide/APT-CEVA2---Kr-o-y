@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CEVA2 Dashboard - Fullscreen PRO</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=WPISZ_TUTAJ_KLUCZ_API&libraries=geometry,directions"></script>
+    
+    <style>
+        :root {
+            --bg: #0b1120; --card: #1e293b; --blue: #38bdf8;
+            --green: #22c55e; --red: #ef4444; --gold: #fbbf24; --text: #f8fafc;
+        }
+        body {
+            font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
+            margin: 0; padding: 8px; display: flex; flex-direction: column; height: 100vh; 
+            box-sizing: border-box; overflow: hidden;
+        }
+        
+        .shift-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; flex-shrink: 0; }
+        .btn-s {
+            background: var(--card); border: 1px solid #334155; color: #94a3b8;
+            padding: 8px 15px; border-radius: 10px; white-space: nowrap; font-weight: 800; font-size: 0.75rem;
+        }
+        .btn-s.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+        .display-area { 
+            flex: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            background: var(--card); border-radius: 24px; margin-bottom: 8px; border: 2px solid #334155;
+            position: relative; overflow: hidden;
+        }
+        
+        /* DUŻA NAZWA PRZYSTANKU */
+        #stop-name { font-size: 2rem; font-weight: 900; color: var(--blue); margin-bottom: 10px; text-transform: uppercase; text-align: center; width: 95%; line-height: 1.1; }
+        
+        .label-text { font-size: 0.9rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: -5px; }
+
+        /* LICZNIKI */
+        #main-min { font-size: 5rem; font-weight: 900; line-height: 1; margin-bottom: 15px; display: flex; align-items: baseline; }
+        #gps-min { font-size: 3.5rem; font-weight: 900; color: var(--gold); line-height: 1; display: flex; align-items: baseline; }
+        .unit { font-size: 1.2rem; margin-left: 5px; font-weight: 700; opacity: 0.8; }
+
+        /* MAPA */
+        #map-container { flex: 1.2; min-height: 130px; border-radius: 20px; overflow: hidden; border: 2px solid var(--blue); position: relative; }
+        #map { width: 100%; height: 100%; pointer-events: none; }
+
+        /* PRZYCISKI */
+        .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
+        .tile-big { 
+            background: var(--card); border-radius: 20px; height: 70px; 
+            display: flex; align-items: center; justify-content: center; 
+            font-weight: 900; font-size: 1.1rem; color: white; border: 1px solid #334155; 
+        }
+
+        #mute-btn { position: absolute; top: 10px; right: 15px; font-size: 1.4rem; background: none; border: none; z-index: 10; }
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .start-btn { background: var(--blue); color: white; border: none; padding: 25px 50px; border-radius: 50px; font-weight: 900; font-size: 1.8rem; }
+    </style>
+</head>
+<body>
+
+    <div id="start-overlay">
+        <button class="start-btn" onclick="startApp()">START</button>
+    </div>
+
+    <div class="shift-nav" id="shift-nav"></div>
+
+    <div class="display-area">
+        <button id="mute-btn" onclick="toggleMute(event)">🔊</button>
+        <p id="stop-name">CZEKAJ...</p>
+        
+        <span class="label-text">Do odjazdu:</span>
+        <div id="main-min">--<span class="unit">min</span></div>
+        
+        <span class="label-text" style="color: var(--gold)">Dojazd (GPS Live):</span>
+        <div id="gps-min">--<span class="unit">min</span></div>
+    </div>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+    <div class="grid-two">
+        <div class="tile-big" onclick="move(-1)">⬅️ WSTECZ</div>
+        <div class="tile-big" onclick="move(1)" style="border-color: var(--blue);">DALEJ ➡️</div>
+    </div>
+
+    <script>
+        let currShift = "06:00"; let idx = 0; let userPos = null;
+        let isMuted = false; let map, userMarker, directionsService, directionsRenderer;
+
+        const geo = { 
+            r: {lat: 51.932880, lng: 15.549931}, w: {lat: 51.945368, lng: 15.520318}, 
+            c: {lat: 51.943136, lng: 15.507973}, s: {lat: 51.961328, lng: 15.498570}, 
+            sul: {lat: 52.083341, lng: 15.626667}, b1: {lat: 52.091677, lng: 15.651582}, 
+            b2: {lat: 52.094107, lng: 15.660497}  
+        };
+
+        const names = {
+            r: "RACULKA", w: "WAZÓW [Staszica]", c: "Z.GÓRA CENTRUM",
+            s: "SOBKOWIAKA [Trasa Płn]", sul: "SULECHÓW [PCK]", b1: "BRAMA 1", b2: "BRAMA 2 (META)"
+        };
+
+        const schedules = {
+            "06:00": [{n:names.r,t:"04:47",g:geo.r},{n:names.w,t:"04:55",g:geo.w},{n:names.c,t: "04:58",g:geo.c},{n:names.s,t:"05:05",g:geo.s},{n:names.sul,t:"05:25",g:geo.sul},{n:names.b1,t:"05:50",g:geo.b1},{n:names.b2,t:"06:00",g:geo.b2}],
+            "10:00": [{n:names.r,t:"08:47",g:geo.r},{n:names.w,t:"08:55",g:geo.w},{n:names.c,t: "08:58",g:geo.c},{n:names.s,t:"09:05",g:geo.s},{n:names.sul,t:"09:25",g:geo.sul},{n:names.b1,t:"09:50",g:geo.b1},{n:names.b2,t:"10:00",g:geo.b2}],
+            "12:00": [{n:names.r,t:"10:40",g:geo.r},{n:names.w,t:"10:50",g:geo.w},{n:names.c,t: "10:53",g:geo.c},{n:names.s,t:"11:00",g:geo.s},{n:names.sul,t:"11:25",g:geo.sul},{n:names.b1,t:"11:50",g:geo.b1},{n:names.b2,t:"12:00",g:geo.b2}],
+            "14:00": [{n:names.r,t:"12:35",g:geo.r},{n:names.w,t:"12:45",g:geo.w},{n:names.c,t: "12:48",g:geo.c},{n:names.s,t:"13:00",g:geo.s},{n:names.sul,t:"13:25",g:geo.sul},{n:names.b1,t:"13:50",g:geo.b1},{n:names.b2,t:"14:00",g:geo.b2}],
+            "16:00": [{n:names.r,t:"14:35",g:geo.r},{n:names.w,t:"14:45",g:geo.w},{n:names.c,t: "14:48",g:geo.c},{n:names.s,t:"15:00",g:geo.s},{n:names.sul,t:"15:25",g:geo.sul},{n:names.b1,t:"15:50",g:geo.b1},{n:names.b2,t:"16:00",g:geo.b2}],
+            "18:00": [{n:names.r,t:"16:35",g:geo.r},{n:names.w,t:"16:45",g:geo.w},{n:names.c,t: "16:48",g:geo.c},{n:names.s,t:"17:00",g:geo.s},{n:names.sul,t:"17:25",g:geo.sul},{n:names.b1,t:"17:50",g:geo.b1},{n:names.b2,t:"18:00",g:geo.b2}]
+        };
+
+        function startApp() {
+            // Próba wejścia w tryb pełnoekranowy
+            const doc = window.document.documentElement;
+            const requestFS = doc.requestFullscreen || doc.mozRequestFullScreen || doc.webkitRequestFullScreen || doc.msRequestFullscreen;
+            
+            if (requestFS) {
+                requestFS.call(doc).catch(err => {
+                    console.log("Pełny ekran zablokowany lub nieobsługiwany: ", err);
+                });
+            }
+
+            document.getElementById('start-overlay').style.display = 'none'; 
+            initMap(); 
+            startGps(); 
+            setInterval(tick, 1000); 
+        }
+
+        function initMap() {
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true, polylineOptions: { strokeColor: '#38bdf8', strokeWeight: 6 } });
+            const s = schedules[currShift][idx];
+            map = new google.maps.Map(document.getElementById("map"), { center: s.g, zoom: 16, mapTypeId: 'satellite', disableDefaultUI: true });
+            directionsRenderer.setMap(map);
+            userMarker = new google.maps.Marker({ position: s.g, map: map, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#fff', fillOpacity: 1, strokeColor: '#38bdf8', strokeWeight: 2 } });
+        }
+
+        function startGps() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(pos => {
+                    userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    if (userMarker) userMarker.setPosition(userPos);
+                    if (map) map.panTo(userPos);
+                    updateLiveETA();
+                }, null, { enableHighAccuracy: true });
+            }
+        }
+
+        function updateLiveETA() {
+            if (userPos && directionsService) {
+                const s = schedules[currShift][idx];
+                directionsService.route({
+                    origin: userPos,
+                    destination: s.g,
+                    travelMode: 'DRIVING'
+                }, (res, stat) => {
+                    if (stat === 'OK') {
+                        directionsRenderer.setDirections(res);
+                        const durationMinutes = Math.round(res.routes[0].legs[0].duration.value / 60);
+                        document.getElementById('gps-min').innerHTML = durationMinutes + '<span class="unit">min</span>';
+                    }
+                });
+            }
+        }
+
+        function tick() {
+            const s = schedules[currShift][idx]; if(!s) return;
+            const now = new Date(); const [h, m] = s.t.split(':').map(Number);
+            const plan = new Date(); plan.setHours(h, m, 0);
+            const diff = Math.ceil((plan - now) / 60000);
+            
+            const disp = document.getElementById('main-min');
+            disp.innerHTML = diff + '<span class="unit">min</span>';
+            disp.style.color = diff < 0 ? 'var(--red)' : 'var(--green)';
+            document.getElementById('stop-name').innerText = s.n;
+        }
+
+        function move(d) { if (schedules[currShift][idx + d
