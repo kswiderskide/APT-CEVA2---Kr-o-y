@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>APT CEVA2</title>
+    <title>CEVA2 - Map Picker Fixed</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDEq-AGhrBol0dkthbxNiH9MwSY-BMrD9s&libraries=geometry,directions"></script>
     
     <style>
@@ -13,28 +13,102 @@
         }
         body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 6px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; }
         
-        /* EKRAN STARTOWY */
+        /* BANNER TRYBU CELOWANIA */
+        #picker-banner { display: none; position: fixed; top: 0; left: 0; width: 100%; background: var(--gold); color: black; padding: 20px; text-align: center; font-weight: 900; z-index: 40000; font-size: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+
+        /* UI */
         #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .start-btn { width: 180px; height: 180px; border-radius: 50%; background: var(--blue); color: white; border: none; font-size: 2rem; font-weight: 900; box-shadow: 0 0 30px rgba(56, 189, 248, 0.4); }
+        .start-btn { width: 180px; height: 180px; border-radius: 50%; background: var(--blue); color: white; border: none; font-size: 2rem; font-weight: 900; }
         .start-gear { position: absolute; bottom: 30px; right: 30px; font-size: 1.5rem; background: var(--card); border: 1px solid #334155; padding: 15px; border-radius: 50%; opacity: 0.6; }
 
-        /* KLAWIATURA PIN */
+        /* PIN */
         #pin-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 30000; flex-direction: column; justify-content: center; align-items: center; }
         .pin-dots { font-size: 3rem; color: var(--blue); margin-bottom: 20px; height: 50px; }
         .keypad { display: grid; grid-template-columns: repeat(3, 75px); gap: 15px; }
         .key { width: 75px; height: 75px; background: var(--card); border: 1px solid #334155; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.6rem; font-weight: 800; }
 
-        /* PANEL EDYCJI */
+        /* PANEL ADMIN */
         #admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 20000; padding: 12px; overflow-y: auto; box-sizing: border-box; }
         .edit-row { background: var(--card); border-radius: 10px; padding: 10px; margin-bottom: 10px; border: 1px solid #334155; position: relative; }
         .edit-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-bottom: 5px; }
         .edit-coords { display: grid; grid-template-columns: 1fr 1fr 50px; gap: 8px; }
-        .edit-input { background: #0f172a; border: 1px solid var(--blue); color: white; padding: 8px; border-radius: 5px; font-size: 0.8rem; width: 100%; box-sizing: border-box; }
+        .edit-input { background: #0f172a; border: 1px solid var(--blue); color: white; padding: 8px; border-radius: 5px; width: 100%; box-sizing: border-box; }
         .del-btn { position: absolute; top: -5px; right: -5px; background: var(--red); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; font-weight: 900; z-index: 5; }
         .map-pick-btn { background: var(--blue); color: white; border: none; border-radius: 5px; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
 
-        /* BANNER WYBORU Z MAPY */
-        #map-picker-banner { display: none; position: fixed; top: 0; left: 0; width: 100%; background: var(--gold); color: black; padding: 15px; text-align: center; font-weight: 900; z-index: 40000; font-size: 0.9rem; }
+        /* GLOWNE UI */
+        .shift-nav { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 8px; }
+        .btn-s { background: var(--card); border: 1px solid #334155; color: #94a3b8; padding: 8px 14px; border-radius: 8px; white-space: nowrap; font-size: 0.75rem; font-weight: 800; }
+        .btn-s.active { background: var(--blue); color: white; }
+        .display-area { flex: 3; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--card); border-radius: 25px; margin-bottom: 8px; border: 2px solid #334155; }
+        #stop-name { font-size: 2.3rem; font-weight: 900; color: var(--blue); text-align: center; line-height: 1; margin: 0 10px; }
+        #main-min { font-size: 4.8rem; font-weight: 900; margin: 5px 0; }
+        #gps-min { font-size: 3rem; font-weight: 900; color: var(--gold); }
+        
+        /* WAŻNE: USUNĄŁEM ONCLICK Z KONTENERA MAPY */
+        #map-container { flex: 2; border-radius: 20px; overflow: hidden; border: 2px solid var(--blue); position: relative; }
+        #map { width: 100%; height: 100%; }
+        
+        .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .tile-big { background: var(--card); border-radius: 15px; height: 60px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem; border: 1px solid #334155; }
+    </style>
+</head>
+<body>
+
+    <div id="picker-banner">KLIKNIJ NA MAPIE ABY ZAPISAĆ PUNKT!</div>
+
+    <div id="start-overlay">
+        <button class="start-btn" onclick="startApp()">START</button>
+        <div class="start-gear" onclick="openPin()">⚙️</div>
+    </div>
+
+    <div id="pin-overlay">
+        <p style="font-weight:900;">PIN: 1234</p>
+        <div class="pin-dots" id="pin-dots"></div>
+        <div class="keypad">
+            <div class="key" onclick="pressKey('1')">1</div><div class="key" onclick="pressKey('2')">2</div><div class="key" onclick="pressKey('3')">3</div>
+            <div class="key" onclick="pressKey('4')">4</div><div class="key" onclick="pressKey('5')">5</div><div class="key" onclick="pressKey('6')">6</div>
+            <div class="key" onclick="pressKey('7')">7</div><div class="key" onclick="pressKey('8')">8</div><div class="key" onclick="pressKey('9')">9</div>
+            <div class="key" style="color:var(--red)" onclick="clearPin()">C</div><div class="key" onclick="pressKey('0')">0</div><div class="key" onclick="closePin()">✖</div>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <h2 style="color:var(--blue); margin-bottom: 10px;">EDYCJA TRASY</h2>
+        <select id="route-select" onchange="loadRouteToEdit()" style="width:100%; padding:12px; margin-bottom:15px; background:var(--card); color:white; border-radius:10px; border: 1px solid var(--blue);"></select>
+        <div id="stops-edit-list"></div>
+        <button onclick="addNewStop()" style="width:100%; padding:15px; background:var(--blue); color:white; border:none; border-radius:10px; font-weight:900; margin-bottom:20px;">+ DODAJ PRZYSTANEK</button>
+        <button onclick="saveAndClose()" style="width:100%; padding:20px; background:var(--green); color:white; border:none; border-radius:15px; font-weight:900; margin-bottom:10px;">ZAPISZ I WRÓĆ</button>
+        <button onclick="exportCode()" style="width:100%; padding:15px; background:var(--gold); color:black; border:none; border-radius:15px; font-weight:900; margin-bottom:10px;">GENERUJ KOD</button>
+        <button onclick="closeAdmin()" style="width:100%; padding:12px; background:var(--red); color:white; border:none; border-radius:15px;">WYJDŹ</button>
+    </div>
+
+    <div class="shift-nav" id="shift-nav-all"></div>
+
+    <div class="display-area">
+        <p id="stop-name">CZEKAJ...</p>
+        <div id="main-min">-- min</div>
+        <div id="gps-min">-- min</div>
+    </div>
+
+    <div id="map-container">
+        <div id="map"></div>
+    </div>
+
+    <div class="grid-two">
+        <div class="tile-big" onclick="move(-1)">⬅️ WSTECZ</div>
+        <div id="btn-next" class="tile-big" onclick="move(1)" style="border-color:var(--blue)">DALEJ ➡️</div>
+    </div>
+
+    <script>
+        const ADMIN_PASS = "1234";
+        let currentPin = "";
+        let schedules = {
+            "06:00": [{n:"RACULKA",t:"04:47",la:51.93288,ln:15.54993},{n:"WAZÓW",t:"04:55",la:51.94536,ln:15.52031},{n:"CENTRUM",t:"04:58",la:51.94313,ln:15.50797},{n:"SOBKOWIAKA",t:"05:05",la:51.96132,ln:15.49857},{n:"SULECHÓW",t:"05:25",la:52.08334,ln:15.62666},{n:"BRAMA 1",t:"05:50",la:52.09099,ln:15.64957},{n:"BRAMA 2",t:"06:00",la:52.09410,ln:15.66049}],
+            "POWRÓT 22:15": [{n:"BRAMA 2 (START)",t:"22:15",la:52.09410,ln:15.66049},{n:"BRAMA 1",t:"---",la:52.09099,ln:15.64957},{n:"SULECHÓW",t:"---",la:52.08334,ln:15.62666},{n:"RACULKA",t:"---",la:51.93288,ln:15.54993}]
+        };
+
+        let currShift = "06:00        #map-picker-banner { display: none; position: fixed; top: 0; left: 0; width: 100%; background: var(--gold); color: black; padding: 15px; text-align: center; font-weight: 900; z-index: 40000; font-size: 0.9rem; }
 
         /* UI GŁÓWNE */
         .shift-nav { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 8px; }
