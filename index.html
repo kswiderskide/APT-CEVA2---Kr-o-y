@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CEVA2 - Inteligentny Czas</title>
+    <title>CEVA2 - Manager V23</title>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDEq-AGhrBol0dkthbxNiH9MwSY-BMrD9s&libraries=geometry,directions"></script>
 
@@ -11,37 +11,37 @@
         :root { --bg: #0b1120; --card: #1e293b; --blue: #38bdf8; --green: #22c55e; --red: #ef4444; --gold: #fbbf24; }
         body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; }
         
-        .nav-label { font-size: 0.8rem; color: #666; font-weight: bold; margin-bottom: 4px; text-transform: uppercase; }
-        .nav-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; flex-shrink: 0; }
-        .btn-s { background: var(--card); color: #aaa; border: 1px solid #444; padding: 10px 14px; border-radius: 6px; font-weight: bold; white-space: nowrap; font-size: 0.9rem; }
+        .nav-label { font-size: 0.8rem; color: #666; font-weight: bold; margin: 5px 0 2px 0; text-transform: uppercase; }
+        .nav-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; flex-shrink: 0; min-height: 45px; }
+        .btn-s { background: var(--card); color: #aaa; border: 1px solid #444; padding: 10px 15px; border-radius: 8px; font-weight: bold; white-space: nowrap; font-size: 0.9rem; }
         .btn-s.active { background: var(--blue); color: black; border-color: white; }
 
-        .display { background: var(--card); border: 1px solid #334155; border-radius: 20px; padding: 12px; text-align: center; margin-bottom: 10px; flex-shrink: 0; }
-        #stop-name { color: var(--blue); font-size: 1.6rem; font-weight: bold; margin: 0; text-transform: uppercase; }
-        #timer { font-size: 3.8rem; font-weight: bold; margin: 2px 0; }
-        #gps-msg { color: var(--gold); font-weight: bold; font-size: 1.1rem; }
+        .display { background: var(--card); border: 1px solid #334155; border-radius: 20px; padding: 15px; text-align: center; margin-bottom: 10px; flex-shrink: 0; }
+        #stop-name { color: var(--blue); font-size: 1.6rem; font-weight: 900; margin: 0; text-transform: uppercase; }
+        #timer { font-size: 4rem; font-weight: 900; margin: 5px 0; color: var(--green); }
+        #gps-msg { color: var(--gold); font-weight: bold; font-size: 1.1rem; min-height: 1.2em; }
 
         #map { flex: 1; width: 100%; border-radius: 15px; background: #111; margin-bottom: 10px; border: 2px solid var(--blue); }
 
         .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 70px; margin-bottom: 5px; flex-shrink: 0; }
-        .btn-nav { background: var(--card); color: white; border: 1px solid #444; border-radius: 15px; font-size: 1.1rem; font-weight: bold; }
+        .btn-nav { background: var(--card); color: white; border: 1px solid #444; border-radius: 15px; font-size: 1.2rem; font-weight: bold; }
         #btn-next { border: 2px solid var(--blue); color: var(--blue); }
         
-        button:active { opacity: 0.7; }
+        button:active { opacity: 0.6; }
     </style>
 </head>
 <body>
 
-    <div class="nav-label">Do pracy:</div>
+    <div class="nav-label">DO PRACY:</div>
     <div class="nav-row" id="work-bar"></div>
 
-    <div class="nav-label">Powroty:</div>
+    <div class="nav-label">POWROTY:</div>
     <div class="nav-row" id="return-bar"></div>
 
     <div class="display">
-        <div id="stop-name">CZEKAJ...</div>
+        <div id="stop-name">ŁADOWANIE...</div>
         <div id="timer">--</div>
-        <div id="gps-msg">GPS: Oczekiwanie...</div>
+        <div id="gps-msg">GPS: Szukam sygnału...</div>
     </div>
 
     <div id="map"></div>
@@ -71,7 +71,16 @@
 
     var curr = "06:00", idx = 0, map, ds, dr, userPos, liveDelay = 0;
 
-    window.onload = function() { renderNav(); refresh(); initMap(); setInterval(refresh, 1000); };
+    window.onload = function() { renderNav(); refresh(); initMap(); setInterval(refresh, 1000); initGPS(); };
+
+    function initGPS() {
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(p => {
+                userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
+                calc();
+            }, null, { enableHighAccuracy: true });
+        }
+    }
 
     function initMap() {
         if(typeof google === 'undefined') return;
@@ -82,12 +91,6 @@
         });
         ds = new google.maps.DirectionsService();
         dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true });
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition(p => {
-                userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
-                calc();
-            }, null, { enableHighAccuracy: true });
-        }
     }
 
     function calc() {
@@ -100,36 +103,24 @@
 
     function refresh() {
         var s = schedules[curr][idx];
+        if(!s) return;
         document.getElementById('stop-name').innerText = s.n;
+        var timerEl = document.getElementById('timer');
         var bn = document.getElementById('btn-next');
         bn.innerText = (idx >= schedules[curr].length - 1) ? "KONIEC ✅" : "NASTĘPNY";
-
-        var timerEl = document.getElementById('timer');
 
         if(s.t === "---") {
             var now = new Date(); now.setMinutes(now.getMinutes() + liveDelay);
             timerEl.innerText = now.getHours() + ":" + (now.getMinutes()<10?'0':'') + now.getMinutes();
-            timerEl.style.color = var(--blue);
+            timerEl.style.color = "var(--blue)";
             document.getElementById('gps-msg').innerText = "DOJAZD: " + liveDelay + " min";
         } else {
             var p = s.t.split(':'); var target = new Date(); target.setHours(p[0], p[1], 0);
             var diff = Math.ceil((target - new Date()) / 60000);
-            
-            // --- LOGIKA 90 MINUT ---
-            if (diff < -90) { 
-                diff += 1440; // Przeskocz na jutro dopiero po półtorej godziny spóźnienia
-            }
-            
+            if (diff < -90) diff += 1440;
             timerEl.innerText = diff + " min";
-            
-            // Kolorowanie: Czerwony jeśli minęła godzina (ale jeszcze nie przeskoczyło na jutro)
-            if (diff < 0) {
-                timerEl.style.color = "var(--red)";
-            } else {
-                timerEl.style.color = "var(--green)";
-            }
-
-            document.getElementById('gps-msg').innerText = "DO RUSZENIA: " + (diff - liveDelay) + " min";
+            timerEl.style.color = (diff < 0) ? "var(--red)" : "var(--green)";
+            document.getElementById('gps-msg').innerText = userPos ? "DO RUSZENIA: " + (diff - liveDelay) + " min" : "GPS: Czekam...";
         }
     }
 
@@ -147,8 +138,7 @@
             btn.className = 'btn-s' + (k === curr ? ' active' : '');
             btn.innerText = k;
             btn.onclick = (function(v){ return function(){ curr=v; idx=0; renderNav(); refresh(); calc(); }; })(k);
-            if(k.includes(":00")) { w.appendChild(btn); }
-            else { r.appendChild(btn); }
+            if(k.includes(":00")) { w.appendChild(btn); } else { r.appendChild(btn); }
         }
     }
 </script>
