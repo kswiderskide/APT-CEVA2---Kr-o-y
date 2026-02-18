@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CEVA2 Dashboard - Fixed v3</title>
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=WPISZ_TUTAJ_KLUCZ_API&libraries=geometry,directions"></script>
+    
+    <style>
+        :root {
+            --bg: #0b1120; --card: #1e293b; --blue: #38bdf8;
+            --green: #22c55e; --red: #ef4444; --gold: #fbbf24; --text: #f8fafc;
+        }
+        body {
+            font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
+            margin: 0; padding: 6px; display: flex; flex-direction: column; height: 100vh; 
+            box-sizing: border-box; overflow: hidden;
+        }
+        
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 9999; }
+        .animate-flash { animation: flash-seq 0.6s ease-in-out 5; }
+        @keyframes flash-seq { 0%, 100% { opacity: 0; } 50% { opacity: 0.7; background: var(--gold); } }
+
+        #navi-selector {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 17, 32, 0.95); flex-direction: column; justify-content: center;
+            align-items: center; z-index: 10000;
+        }
+        .navi-option { width: 80%; background: var(--card); border: 2px solid #334155; color: white; padding: 15px; margin: 6px; border-radius: 12px; font-weight: 800; text-align: center; }
+
+        .nav-label { font-size: 0.6rem; font-weight: 900; color: #64748b; text-transform: uppercase; margin: 2px 0 2px 5px; }
+        .shift-nav { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; flex-shrink: 0; scrollbar-width: none; }
+        .btn-s { background: var(--card); border: 1px solid #334155; color: #94a3b8; padding: 6px 12px; border-radius: 8px; white-space: nowrap; font-weight: 800; font-size: 0.7rem; }
+        .btn-s.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+        .display-area { flex: 2.8; display: flex; flex-direction: column; justify-content: center; align-items: center; background: var(--card); border-radius: 20px; margin-bottom: 6px; border: 2px solid #334155; position: relative; overflow: hidden; }
+        
+        #stop-name { font-size: 2.2rem; font-weight: 900; color: var(--blue); margin-bottom: 8px; text-transform: uppercase; text-align: center; width: 95%; line-height: 1; letter-spacing: -1px; }
+        
+        #label-top { font-size: 0.75rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: -2px; }
+        #label-bottom { font-size: 0.75rem; font-weight: 800; color: var(--gold); text-transform: uppercase; margin-bottom: -2px; }
+        
+        #main-min { font-size: 4.2rem; font-weight: 900; line-height: 1; margin-bottom: 5px; display: flex; align-items: baseline; }
+        #gps-min { font-size: 2.8rem; font-weight: 900; color: var(--gold); line-height: 1; display: flex; align-items: baseline; }
+        .unit { font-size: 1rem; margin-left: 4px; font-weight: 700; opacity: 0.8; }
+
+        #map-container { flex: 1.8; min-height: 100px; border-radius: 15px; overflow: hidden; border: 2px solid var(--blue); position: relative; cursor: pointer; }
+        #map { width: 100%; height: 100%; pointer-events: none; }
+
+        .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
+        .tile-big { background: var(--card); border-radius: 15px; height: 58px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.1rem; color: white; border: 1px solid #334155; }
+
+        #mute-btn { position: absolute; top: 8px; right: 12px; font-size: 1.2rem; background: none; border: none; z-index: 10; }
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .start-btn { background: var(--blue); color: white; border: none; padding: 25px 50px; border-radius: 50px; font-weight: 900; font-size: 1.8rem; }
+    </style>
+</head>
+<body>
+
+    <div id="flash-overlay"></div>
+    <div id="start-overlay"><button class="start-btn" onclick="startApp()">START</button></div>
+
+    <div id="navi-selector">
+        <p style="font-weight: 900; margin-bottom: 15px; color:white;">WYBIERZ NAWIGACJĘ:</p>
+        <div class="navi-option" onclick="launchNav('google')">GOOGLE MAPS</div>
+        <div class="navi-option" onclick="launchNav('waze')">WAZE</div>
+        <div class="navi-option" onclick="launchNav('apple')">APPLE MAPS (iOS)</div>
+        <div class="navi-option" onclick="launchNav('system')">DOMYŚLNA</div>
+        <div style="margin-top:15px; color:#94a3b8; text-decoration:underline;" onclick="closeNavSelector()">ANULUJ</div>
+    </div>
+
+    <div class="nav-label">Do pracy:</div>
+    <div class="shift-nav" id="shift-nav-work"></div>
+    <div class="nav-label">Powroty:</div>
+    <div class="shift-nav" id="shift-nav-returns"></div>
+
+    <div class="display-area">
+        <button id="mute-btn" onclick="toggleMute(event)">🔊</button>
+        <p id="stop-name">CZEKAJ...</p>
+        <span id="label-top">Do odjazdu:</span>
+        <div id="main-min">--<span class="unit">min</span></div>
+        <span id="label-bottom">Musisz ruszyć za:</span>
+        <div id="gps-min">--<span class="unit">min</span></div>
+    </div>
+
+    <div id="map-container" onclick="showNavSelector()"><div id="map"></div></div>
+
+    <div class="grid-two">
+        <div class="tile-big" onclick="move(-1)">⬅️ WSTECZ</div>
+        <div id="btn-next" class="tile-big" onclick="move(1)" style="border-color: var(--blue);">DALEJ ➡️</div>
+    </div>
+
+    <script>
+        let currShift = "06:00"; let idx = 0; let userPos = null;
+        let isMuted = false; let map, userMarker, directionsService, directionsRenderer;
+        let liveDurationMinutes = 0; let moveAlarmPlayed = false; let departureAlarmPlayed = false;
+
+        const geo = { 
+            r: {lat: 51.932880, lng: 15.549931}, 
+            w: {lat: 51.945368, lng: 15.520318}, 
+            c: {lat: 51.943136, lng: 15.507973}, 
+            s: {lat: 51.961328, lng: 15.498570}, 
+            sul: {lat: 52.083341, lng: 15.626667}, 
+            b1: {lat: 52.090999, lng: 15.649570}, // NOWE WSPÓŁRZĘDNE BRAMY 1
+            b2: {lat: 52.094107, lng: 15.660497}  
+        };
+
+        const workStops = (h) => [{n:"RACULKA",t:h[0],g:geo.r},{n:"WAZÓW",t:h[1],g:geo.w},{n:"CENTRUM",t:h[2],g:geo.c},{n:"SOBKOWIAKA",t:h[3],g:geo.s},{n:"SULECHÓW",t:h[4],g:geo.sul},{n:"BRAMA 1",t:h[5],g:geo.b1},{n:"BRAMA 2",t:h[6],g:geo.b2}];
+        const retStops = (t) => [{n:"BRAMA 2 (START)",t:t,g:geo.b2},{n:"BRAMA 1",t:"---",g:geo.b1},{n:"SULECHÓW",t:"---",g:geo.sul},{n:"RACULKA",t:"---",g:geo.r}];
+
+        const schedules = {
+            "06:00": workStops(["04:47","04:55","04:58","05:05","05:25","05:50","06:00"]),
+            "10:00": workStops(["08:47","08:55","08:58","09:05","09:25","09:50","10:00"]),
+            "12:00": workStops(["10:40","10:50","10:53","11:00","11:25","11:50","12:00"]),
+            "14:00": workStops(["12:35","12:45","12:48","13:00","13:25","13:50","14:00"]),
+            "16:00": workStops(["14:35","14:45","14:48","15:00","15:25","15:50","16:00"]),
+            "18:00": workStops(["16:35","16:45","16:48","17:00","17:25","17:50","18:00"]),
+            "POWRÓT 08:15": retStops("08:15"), "POWRÓT 10:15": retStops("10:15"),
+            "POWRÓT 12:15": retStops("12:15"), "POWRÓT 14:15": retStops("14:15"),
+            "POWRÓT 16:15": retStops("16:15"), "POWRÓT 18:15": retStops("18:15"),
+            "POWRÓT 20:15": retStops("20:15"), "POWRÓT 22:15": retStops("22:15")
+        };
+
+        function showNavSelector() { document.getElementById('navi-selector').style.display = 'flex'; }
+        function closeNavSelector() { document.getElementById('navi-selector').style.display = 'none'; }
+
+        function launchNav(type) {
+            if (!userPos) { alert("Czekam na GPS..."); return; }
+            const stops = schedules[currShift].slice(idx);
+            const destination = stops[stops.length - 1];
+            let url = "";
+            switch(type) {
+                case 'google':
+                    const wp = stops.slice(0, -1).map(s => `${s.g.lat},${s.g.lng}`).join('|');
+                    url = `https://www.google.com/maps/dir/?api=1&origin=${userPos.lat},${userPos.lng}&destination=${destination.g.lat},${destination.g.lng}&waypoints=${wp}&travelmode=driving`;
+                    break;
+                case 'waze': url = `https://waze.com/ul?ll=${stops[0].g.lat},${stops[0].g.lng}&navigate=yes`; break;
+                case 'apple': url = `maps://?daddr=${stops[0].g.lat},${stops[0].g.lng}&saddr=${userPos.lat},${userPos.lng}`; break;
+                case 'system': url = `geo:${stops[0].g.lat},${stops[0].g.lng}?q=${stops[0].g.lat},${stops[0].g.lng}`; break;
+            }
+            window.open(url, '_blank'); closeNavSelector();
+        }
+
+        function startApp() {
+            if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+            document.getElementById('start-overlay').style.display = 'none';
+            initMap(); startGps(); setInterval(tick, 1000);
+        }
+
+        function triggerVisualFlash() {
+            const o = document.getElementById('flash-overlay');
+            o.classList.remove('animate-flash'); void o.offsetWidth; o.classList.add('animate-flash');
+        }
+
+        function initMap() {
+            if (typeof google === 'undefined') { alert("Błąd API Map! Sprawdź klucz."); return; }
+            map = new google.maps.Map(document.getElementById("map"), { center: geo.r, zoom: 15, mapTypeId: 'satellite', disableDefaultUI: true });
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true, polylineOptions: { strokeColor: '#38bdf8', strokeWeight: 5 } });
+            userMarker = new google.maps.Marker({ position: geo.r, map: map, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 6, fillColor: '#fff', fillOpacity: 1, strokeColor: '#38bdf8', strokeWeight: 2 } });
+        }
+
+        function startGps() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(pos => {
+                    userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    if (userMarker) userMarker.setPosition(userPos); if (map) map.panTo(userPos);
+                    updateLiveETA();
+                }, null, { enableHighAccuracy: true });
+            }
+        }
+
+        function updateLiveETA() {
+            if (userPos && directionsService) {
+                directionsService.route({ origin: userPos, destination: schedules[currShift][idx].g, travelMode: 'DRIVING' }, (res, stat) => {
+                    if (stat === 'OK') { directionsRenderer.setDirections(res); liveDurationMinutes = Math.round(res.routes[0].legs[0].duration.value / 60); }
+                });
+            }
+        }
+
+        function tick() {
+            const s = schedules[currShift][idx]; if(!s) return;
+            document.getElementById('stop-name').innerText = s.n;
+
+            const btnNext = document.getElementById('btn-next');
+            if (idx === schedules[currShift].length - 1) {
+                btnNext.innerHTML = "ZAKOŃCZ ✅"; btnNext.style.background = "var(--green)";
+            } else {
+                btnNext.innerHTML = "DALEJ ➡️"; btnNext.style.background = "var(--card)";
+            }
+            
+            const labelTop = document.getElementById('label-top'), labelBottom = document.getElementById('label-bottom');
+            const mainDisp = document.getElementById('main-min'), gpsDisp = document.getElementById('gps-min');
+
+            if (s.t === "---") {
+                labelTop.innerText = "Będziesz o:"; labelBottom.innerText = "Czas przejazdu:";
+                if (liveDurationMinutes > 0) {
+                    const eta = new Date(); eta.setMinutes(eta.getMinutes() + liveDurationMinutes);
+                    mainDisp.innerHTML = String(eta.getHours()).padStart(2,'0') + ":" + String(eta.getMinutes()).padStart(2,'0');
+                    mainDisp.style.color = 'var(--blue)';
+                    gpsDisp.innerHTML = liveDurationMinutes + '<span class="unit">min</span>';
+                }
+                return;
+            }
+
+            labelTop.innerText = "Do odjazdu:"; labelBottom.innerText = "Musisz ruszyć za:";
+            const now = new Date(); const [h, m] = s.t.split(':').map(Number); const plan = new Date(); plan.setHours(h, m, 0); 
+            const diff = Math.ceil((plan - now) / 60000);
+            mainDisp.innerHTML = diff + '<span class="unit">min</span>'; mainDisp.style.color = diff < 0 ? 'var(--red)' : 'var(--green)';
+            if (diff === 0 && !departureAlarmPlayed) { triggerVisualFlash(); departureAlarmPlayed = true; }
+            const moveIn = diff - liveDurationMinutes;
+            if (moveIn <= 0) { gpsDisp.innerHTML = 'RUSZAJ!'; gpsDisp.style.color = 'var(--red)'; } 
+            else { gpsDisp.innerHTML = moveIn + '<span class="unit">min</span>'; gpsDisp.style.color = 'var(--gold)'; if (moveIn <= 3 && !moveAlarmPlayed && !currShift.startsWith("POWRÓT")) { triggerVisualFlash(); moveAlarmPlayed = true; } }
+        }
+
+        function move(d) { 
+            if (schedules[currShift][idx + d]) { idx += d; moveAlarmPlayed = false; departureAlarmPlayed = false; updateLiveETA(); tick(); } 
+            else if (d === 1 && idx === schedules[currShift].length - 1) { if (confirm("Zakończyć trasę?")) location.reload(); }
+        }
+        function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔊"; }
+
+        window.onload = () => {
+            const nw = document.getElementById('shift-nav-work'), nr = document.getElementById('shift-nav-returns');
+            Object.keys(schedules).forEach((k) => {
+                const b = document.createElement('button'); b.className = 'btn-s'; if (k === currShift) b.classList.add('active'); b.innerText = k.replace("POWRÓT ", "");
+                b.onclick = () => { document.querySelectorAll('.btn-s').forEach(x => x.classList.remove('active')); b.classList.add('active'); currShift = k; idx = 0; updateLiveETA(); tick(); };
+                if (k.startsWith("POWRÓT")) nr.appendChild(b); else nw.appendChild(b);
+            });
+        };
+    </script>
+</body>
+</html>
