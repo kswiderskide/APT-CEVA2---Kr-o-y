@@ -3,55 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CEVA2 - Manager Naprawiony</title>
-    
+    <title>CEVA2 - Full Rozkład</title>
+
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDEq-AGhrBol0dkthbxNiH9MwSY-BMrD9s&libraries=geometry,directions"></script>
     
     <style>
         :root { --bg: #0b1120; --card: #1e293b; --blue: #38bdf8; --green: #22c55e; --red: #ef4444; --gold: #fbbf24; --text: #f8fafc; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; }
-        
-        button { cursor: pointer; }
+        button { cursor: pointer; user-select: none; }
 
-        /* BANNERY */
-        #picker-banner { display: none; position: fixed; top: 0; left: 0; width: 100%; background: var(--gold); color: black; padding: 20px; text-align: center; font-weight: 900; z-index: 99999; }
-        
-        /* EKRAN STARTOWY */
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 10000; display: flex; justify-content: center; align-items: center; }
-        .start-btn { width: 150px; height: 150px; border-radius: 50%; background: var(--blue); color: white; border: none; font-size: 1.5rem; font-weight: bold; box-shadow: 0 0 20px var(--blue); }
-        .gear-btn { position: absolute; bottom: 30px; right: 30px; font-size: 2rem; background: none; border: none; opacity: 0.7; }
+        /* GÓRNY PASEK ZMIAN (Przewijany) */
+        .top-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; min-height: 50px; flex-shrink: 0; background: var(--bg); z-index: 10; }
+        .btn-nav { background: var(--card); color: #aaa; border: 1px solid #444; padding: 10px 15px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; white-space: nowrap; flex: 1; min-width: 90px; }
+        .btn-nav.active { background: var(--blue); color: black; border-color: var(--blue); box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
 
-        /* PIN */
-        #pin-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 20000; flex-direction: column; justify-content: center; align-items: center; }
-        .keypad { display: grid; grid-template-columns: repeat(3, 80px); gap: 15px; margin-top: 20px; }
-        .key { width: 80px; height: 80px; background: var(--card); border: 1px solid #555; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.5rem; color: white; font-weight: bold; }
-        .key:active { background: var(--blue); }
+        /* GŁÓWNY INFO BOX */
+        .info-box { background: var(--card); text-align: center; padding: 15px; border-radius: 20px; margin: 5px 0 10px 0; border: 2px solid #444; flex-shrink: 0; }
+        #stop-name { font-size: 2.2rem; color: var(--blue); margin: 0; font-weight: 900; line-height: 1.1; text-transform: uppercase; }
+        #timer { font-size: 4.5rem; font-weight: 900; margin: 5px 0; line-height: 1; color: var(--green); }
+        .sub-timer { font-size: 1.2rem; color: var(--gold); font-weight: bold; }
 
-        /* ADMIN */
-        #admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 15000; padding: 15px; overflow-y: auto; box-sizing: border-box; }
-        .edit-row { background: var(--card); padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #444; position: relative; }
-        .edit-input { background: #000; color: white; border: 1px solid var(--blue); padding: 8px; width: 100%; margin: 2px 0; box-sizing: border-box; }
-        .btn-action { width: 100%; padding: 15px; margin-top: 10px; border-radius: 10px; border: none; font-weight: bold; color: white; font-size: 1rem; }
-        
-        /* GŁÓWNY WIDOK */
-        .top-nav { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; white-space: nowrap; }
-        .btn-nav { background: var(--card); color: #aaa; border: 1px solid #444; padding: 10px 15px; border-radius: 8px; font-weight: bold; }
-        .btn-nav.active { background: var(--blue); color: white; border-color: var(--blue); }
-        
-        .info-box { background: var(--card); text-align: center; padding: 15px; border-radius: 20px; margin-bottom: 10px; border: 2px solid #444; flex-shrink: 0; }
-        #stop-name { font-size: 2rem; color: var(--blue); margin: 0; font-weight: 900; line-height: 1.1; }
-        #timer { font-size: 4rem; font-weight: 900; margin: 5px 0; line-height: 1; }
-        
+        /* MAPA */
         #map-container { flex: 1; width: 100%; border-radius: 15px; border: 2px solid var(--blue); margin-bottom: 10px; position: relative; overflow: hidden; }
         #map { width: 100%; height: 100%; background: #222; }
+
+        /* PRZYCISKI POPRZEDNI / NASTĘPNY */
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 70px; flex-shrink: 0; margin-bottom: 10px; }
+        .btn-big { background: var(--card); color: white; border: 1px solid #444; border-radius: 15px; font-weight: bold; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; text-transform: uppercase; }
+        #btn-next { background: var(--card); border: 2px solid var(--blue); color: var(--blue); }
+
+        /* EKRAN STARTOWY */
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 10000; display: flex; justify-content: center; align-items: center; }
+        .start-btn { width: 160px; height: 160px; border-radius: 50%; background: var(--blue); color: white; border: none; font-size: 1.8rem; font-weight: bold; box-shadow: 0 0 30px var(--blue); }
+        .gear-btn { position: absolute; bottom: 30px; right: 30px; font-size: 2.5rem; background: none; border: none; opacity: 0.5; }
+
+        /* KLAWIATURA PIN */
+        #pin-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 20000; flex-direction: column; justify-content: center; align-items: center; }
+        .keypad { display: grid; grid-template-columns: repeat(3, 85px); gap: 15px; margin-top: 30px; }
+        .key { width: 85px; height: 85px; background: var(--card); border: 1px solid #666; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; color: white; font-weight: bold; }
         
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 70px; flex-shrink: 0; }
-        .btn-big { background: var(--card); color: white; border: 1px solid #444; border-radius: 15px; font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        /* ADMIN PANEL */
+        #admin-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 15000; padding: 15px; overflow-y: auto; box-sizing: border-box; }
+        .edit-row { background: var(--card); padding: 15px; margin-bottom: 15px; border-radius: 12px; border: 1px solid #555; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .edit-input { background: black; color: white; border: 1px solid var(--blue); padding: 10px; font-size: 1rem; border-radius: 5px; width: 100%; box-sizing: border-box; }
+        .full-width { grid-column: span 2; }
+        .btn-action { width: 100%; padding: 15px; margin-top: 10px; border-radius: 10px; border: none; font-weight: bold; color: white; font-size: 1.1rem; }
+
+        /* BANNER CELOWANIA */
+        #picker-banner { display: none; position: fixed; top: 0; left: 0; width: 100%; background: var(--gold); color: black; padding: 25px; text-align: center; font-weight: 900; font-size: 1.2rem; z-index: 99999; }
     </style>
 </head>
 <body>
 
-    <div id="picker-banner">KLIKNIJ NA MAPIE ABY ZAPISAĆ</div>
+    <div id="picker-banner">KLIKNIJ NA MAPIE ABY ZAPISAĆ PUNKT</div>
 
     <div id="start-overlay">
         <button class="start-btn" onclick="startApp()">START</button>
@@ -59,19 +63,18 @@
     </div>
 
     <div id="pin-overlay">
-        <h2 style="color:white; margin:0;">PODAJ PIN</h2>
-        <div id="pin-dots" style="color:var(--blue); font-size:3rem; height:50px; letter-spacing: 5px;"></div>
+        <div id="pin-dots" style="color:var(--blue); font-size:4rem; height:60px; letter-spacing:10px;"></div>
         <div class="keypad">
             <div class="key" onclick="typePin('1')">1</div><div class="key" onclick="typePin('2')">2</div><div class="key" onclick="typePin('3')">3</div>
             <div class="key" onclick="typePin('4')">4</div><div class="key" onclick="typePin('5')">5</div><div class="key" onclick="typePin('6')">6</div>
             <div class="key" onclick="typePin('7')">7</div><div class="key" onclick="typePin('8')">8</div><div class="key" onclick="typePin('9')">9</div>
-            <div class="key" style="color:var(--red)" onclick="clearPin()">C</div><div class="key" onclick="typePin('0')">0</div><div class="key" onclick="closePin()">X</div>
+            <div class="key" style="color:red" onclick="clearPin()">C</div><div class="key" onclick="typePin('0')">0</div><div class="key" onclick="closePin()">X</div>
         </div>
     </div>
 
     <div id="admin-panel">
-        <h2 style="color:var(--blue); margin-top:0;">EDYCJA</h2>
-        <select id="route-select" onchange="loadEditor()" style="width:100%; padding:15px; margin-bottom:15px; background:black; color:white; border:1px solid var(--blue); border-radius:8px;"></select>
+        <h2 style="color:var(--blue); margin-top:0;">EDYCJA TRASY</h2>
+        <select id="route-select" onchange="loadEditor()" style="width:100%; padding:15px; background:black; color:white; border:1px solid var(--blue); border-radius:8px; font-size:1.1rem; margin-bottom:15px;"></select>
         <div id="editor-list"></div>
         <button class="btn-action" style="background:var(--blue)" onclick="addStop()">+ DODAJ PRZYSTANEK</button>
         <button class="btn-action" style="background:var(--green)" onclick="saveAndExit()">ZAPISZ I WYJDŹ</button>
@@ -81,18 +84,16 @@
     <div class="top-nav" id="nav-buttons"></div>
 
     <div class="info-box">
-        <div id="stop-name">CZEKAJ...</div>
+        <div id="stop-name">ŁADOWANIE...</div>
         <div id="timer">--</div>
-        <div style="color:var(--gold); font-weight:bold;">RUSZ ZA: <span id="gps-timer">--</span></div>
+        <div class="sub-timer">GPS: <span id="gps-timer">--</span></div>
     </div>
 
-    <div id="map-container">
-        <div id="map"></div>
-    </div>
+    <div id="map-container"><div id="map"></div></div>
 
     <div class="controls">
-        <button class="btn-big" onclick="changeStop(-1)">POPRZEDNI ⬅️</button>
-        <button class="btn-big" id="btn-next" onclick="changeStop(1)" style="border-color:var(--blue)">NASTĘPNY ➡️</button>
+        <button class="btn-big" onclick="changeStop(-1)">POPRZEDNI</button>
+        <button class="btn-big" id="btn-next" onclick="changeStop(1)">NASTĘPNY</button>
     </div>
 
     <script>
@@ -100,16 +101,34 @@
         const PIN_CODE = "1234";
         let currentPin = "";
         
-        // --- DANE NAPRAWIONE ---
+        // --- PEŁNY ROZKŁAD JAZDY ---
         let schedules = {
             "06:00": [
                 { "n": "RACULKA", "t": "04:47", "la": 51.93288, "ln": 15.54993 },
-                { "n": "STASZICA (WAZÓW)", "t": "04:55", "la": 51.94536, "ln": 15.52031 },
+                { "n": "WAZÓW", "t": "04:55", "la": 51.94536, "ln": 15.52031 },
                 { "n": "CENTRUM", "t": "04:58", "la": 51.94313, "ln": 15.50797 },
-                { "n": "TRASA PÓŁNOCNA (SOBKOWIAKA)", "t": "05:05", "la": 51.96132, "ln": 15.49857 },
-                { "n": "SULECHÓW PCK", "t": "05:25", "la": 52.08334, "ln": 15.62666 },
-                { "n": "KRĘŻOŁY BRAMA 1", "t": "05:50", "la": 52.09099, "ln": 15.64957 },
-                { "n": "KRĘŻOŁY BRAMA 2", "t": "06:00", "la": 52.0941, "ln": 15.66049 }
+                { "n": "SOBKOWIAKA", "t": "05:05", "la": 51.96132, "ln": 15.49857 },
+                { "n": "SULECHÓW", "t": "05:25", "la": 52.08334, "ln": 15.62666 },
+                { "n": "BRAMA 1", "t": "05:50", "la": 52.09099, "ln": 15.64957 },
+                { "n": "BRAMA 2", "t": "06:00", "la": 52.09410, "ln": 15.66049 }
+            ],
+            "10:00": [
+                { "n": "RACULKA", "t": "08:47", "la": 51.93288, "ln": 15.54993 },
+                { "n": "WAZÓW", "t": "08:55", "la": 51.94536, "ln": 15.52031 },
+                { "n": "CENTRUM", "t": "08:58", "la": 51.94313, "ln": 15.50797 },
+                { "n": "SOBKOWIAKA", "t": "09:05", "la": 51.96132, "ln": 15.49857 },
+                { "n": "SULECHÓW", "t": "09:25", "la": 52.08334, "ln": 15.62666 },
+                { "n": "BRAMA 1", "t": "09:50", "la": 52.09099, "ln": 15.64957 },
+                { "n": "BRAMA 2", "t": "10:00", "la": 52.09410, "ln": 15.66049 }
+            ],
+            "12:00": [
+                { "n": "RACULKA", "t": "10:40", "la": 51.93288, "ln": 15.54993 },
+                { "n": "WAZÓW", "t": "10:50", "la": 51.94536, "ln": 15.52031 },
+                { "n": "CENTRUM", "t": "10:53", "la": 51.94313, "ln": 15.50797 },
+                { "n": "SOBKOWIAKA", "t": "11:00", "la": 51.96132, "ln": 15.49857 },
+                { "n": "SULECHÓW", "t": "11:25", "la": 52.08334, "ln": 15.62666 },
+                { "n": "BRAMA 1", "t": "11:50", "la": 52.09099, "ln": 15.64957 },
+                { "n": "BRAMA 2", "t": "12:00", "la": 52.09410, "ln": 15.66049 }
             ],
             "14:00": [
                 { "n": "RACULKA", "t": "12:35", "la": 51.93288, "ln": 15.54993 },
@@ -118,26 +137,41 @@
                 { "n": "SOBKOWIAKA", "t": "13:00", "la": 51.96132, "ln": 15.49857 },
                 { "n": "SULECHÓW", "t": "13:25", "la": 52.08334, "ln": 15.62666 },
                 { "n": "BRAMA 1", "t": "13:50", "la": 52.09099, "ln": 15.64957 },
-                { "n": "BRAMA 2", "t": "14:00", "la": 52.0941, "ln": 15.66049 }
+                { "n": "BRAMA 2", "t": "14:00", "la": 52.09410, "ln": 15.66049 }
             ],
-            "POWRÓT 22:15": [
-                { "n": "BRAMA 2 (START)", "t": "22:15", "la": 52.0941, "ln": 15.66049 },
-                { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 },
-                { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 },
-                { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 }
-            ]
+            "16:00": [
+                { "n": "RACULKA", "t": "14:35", "la": 51.93288, "ln": 15.54993 },
+                { "n": "WAZÓW", "t": "14:45", "la": 51.94536, "ln": 15.52031 },
+                { "n": "CENTRUM", "t": "14:48", "la": 51.94313, "ln": 15.50797 },
+                { "n": "SOBKOWIAKA", "t": "15:00", "la": 51.96132, "ln": 15.49857 },
+                { "n": "SULECHÓW", "t": "15:25", "la": 52.08334, "ln": 15.62666 },
+                { "n": "BRAMA 1", "t": "15:50", "la": 52.09099, "ln": 15.64957 },
+                { "n": "BRAMA 2", "t": "16:00", "la": 52.09410, "ln": 15.66049 }
+            ],
+            "18:00": [
+                { "n": "RACULKA", "t": "16:35", "la": 51.93288, "ln": 15.54993 },
+                { "n": "WAZÓW", "t": "16:45", "la": 51.94536, "ln": 15.52031 },
+                { "n": "CENTRUM", "t": "16:48", "la": 51.94313, "ln": 15.50797 },
+                { "n": "SOBKOWIAKA", "t": "17:00", "la": 51.96132, "ln": 15.49857 },
+                { "n": "SULECHÓW", "t": "17:25", "la": 52.08334, "ln": 15.62666 },
+                { "n": "BRAMA 1", "t": "17:50", "la": 52.09099, "ln": 15.64957 },
+                { "n": "BRAMA 2", "t": "18:00", "la": 52.09410, "ln": 15.66049 }
+            ],
+            "POWRÓT 08:15": [ { "n": "BRAMA 2", "t": "08:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
+            "POWRÓT 10:15": [ { "n": "BRAMA 2", "t": "10:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
+            "POWRÓT 12:15": [ { "n": "BRAMA 2", "t": "12:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
+            "POWRÓT 14:15": [ { "n": "BRAMA 2", "t": "14:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
+            "POWRÓT 16:15": [ { "n": "BRAMA 2", "t": "16:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
+            "POWRÓT 18:15": [ { "n": "BRAMA 2", "t": "18:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
+            "POWRÓT 20:15": [ { "n": "BRAMA 2", "t": "20:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
+            "POWRÓT 22:15": [ { "n": "BRAMA 2", "t": "22:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ]
         };
         // -----------------------------------------------------------
 
         let currShift = "06:00";
         let idx = 0;
-        let map = null;
-        let userMarker = null;
-        let directionsService = null; 
-        let directionsRenderer = null;
-        let userPos = null;
+        let map, directionsService, directionsRenderer, userPos;
         let liveDelay = 0;
-        
         let pickMode = false;
         let pickTarget = null;
 
@@ -159,14 +193,12 @@
                     disableDefaultUI: true
                 });
 
-                // KLUCZOWE: Obsługa kliknięć
                 map.addListener("click", function(e) {
                     if (pickMode) {
                         let lat = e.latLng.lat().toFixed(5);
                         let lng = e.latLng.lng().toFixed(5);
                         schedules[pickTarget.r][pickTarget.i].la = parseFloat(lat);
                         schedules[pickTarget.r][pickTarget.i].ln = parseFloat(lng);
-                        
                         pickMode = false;
                         document.getElementById('picker-banner').style.display = 'none';
                         document.getElementById('admin-panel').style.display = 'block';
@@ -188,7 +220,7 @@
 
             } catch (err) {
                 console.error(err);
-                alert("Błąd mapy. Sprawdź klucz API.");
+                alert("Błąd API Map. Sprawdź klucz.");
             }
         }
 
@@ -197,9 +229,7 @@
             let dest = { lat: schedules[currShift][idx].la, lng: schedules[currShift][idx].ln };
             
             directionsService.route({
-                origin: userPos,
-                destination: dest,
-                travelMode: 'DRIVING'
+                origin: userPos, destination: dest, travelMode: 'DRIVING'
             }, function(res, status) {
                 if (status === 'OK') {
                     directionsRenderer.setDirections(res);
@@ -210,19 +240,20 @@
 
         function updateScreen() {
             if (pickMode) return;
-            
             let s = schedules[currShift][idx];
             if (!s) return;
 
             document.getElementById('stop-name').innerText = s.n;
-            
             let btnNext = document.getElementById('btn-next');
+            
             if (idx >= schedules[currShift].length - 1) {
                 btnNext.innerText = "ZAKOŃCZ ✅";
                 btnNext.style.background = "var(--green)";
+                btnNext.style.color = "white";
             } else {
-                btnNext.innerText = "DALEJ ➡️";
+                btnNext.innerText = "NASTĘPNY";
                 btnNext.style.background = "var(--card)";
+                btnNext.style.color = "var(--blue)";
             }
 
             if (s.t === "---") {
@@ -237,7 +268,6 @@
                 let parts = s.t.split(':');
                 let target = new Date();
                 target.setHours(parseInt(parts[0]), parseInt(parts[1]), 0);
-                
                 let diff = Math.ceil((target - new Date()) / 60000);
                 let el = document.getElementById('timer');
                 el.innerText = diff + " min";
@@ -269,13 +299,7 @@
                 let btn = document.createElement('button');
                 btn.className = 'btn-nav ' + (k === currShift ? 'active' : '');
                 btn.innerText = k;
-                btn.onclick = function() {
-                    currShift = k;
-                    idx = 0;
-                    renderButtons();
-                    updateScreen();
-                    calculateRoute();
-                };
+                btn.onclick = function() { currShift = k; idx = 0; renderButtons(); updateScreen(); calculateRoute(); };
                 div.appendChild(btn);
             }
         }
@@ -290,7 +314,7 @@
             }
         }
         function clearPin() { currentPin = ""; updateDots(); }
-        function updateDots() { document.getElementById('pin-dots').innerText = "•".repeat(currentPin.length); }
+        function updateDots() { document.getElementById('pin-dots').innerText = "*".repeat(currentPin.length); }
 
         function openAdmin() {
             document.getElementById('admin-panel').style.display = 'block';
@@ -298,9 +322,7 @@
             sel.innerHTML = "";
             for (let k in schedules) {
                 let opt = document.createElement('option');
-                opt.value = k;
-                opt.innerText = k;
-                sel.appendChild(opt);
+                opt.value = k; opt.innerText = k; sel.appendChild(opt);
             }
             loadEditor();
         }
@@ -313,10 +335,10 @@
                 let row = document.createElement('div');
                 row.className = 'edit-row';
                 row.innerHTML = 
-                    '<b>' + (i+1) + '.</b> <input class="edit-input" value="' + s.n + '" onchange="schedules[\''+r+'\']['+i+'].n=this.value">' +
-                    '<input class="edit-input" value="' + s.t + '" onchange="schedules[\''+r+'\']['+i+'].t=this.value"><br>' +
-                    'GPS: ' + s.la + ', ' + s.ln + ' <button onclick="pickOnMap(\''+r+'\','+i+')" style="background:var(--blue); color:white; border:none; padding:5px;">📍 MAPA</button>' +
-                    ' <button onclick="delStop(\''+r+'\','+i+')" style="color:red; float:right; background:none; border:none; font-weight:bold;">USUŃ</button>';
+                    '<div class="full-width"><b>'+(i+1)+'.</b> <input class="edit-input" value="'+s.n+'" onchange="schedules[\''+r+'\']['+i+'].n=this.value"></div>' +
+                    '<div><input class="edit-input" value="'+s.t+'" onchange="schedules[\''+r+'\']['+i+'].t=this.value"></div>' +
+                    '<div><button onclick="pickOnMap(\''+r+'\','+i+')" style="width:100%; background:var(--blue); border:none; padding:10px; color:white; border-radius:5px;">📍 GPS</button></div>' +
+                    '<div class="full-width"><button onclick="delStop(\''+r+'\','+i+')" style="width:100%; background:var(--red); border:none; padding:10px; color:white; border-radius:5px;">USUŃ PRZYSTANEK</button></div>';
                 div.appendChild(row);
             });
         }
