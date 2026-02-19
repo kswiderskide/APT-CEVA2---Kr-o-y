@@ -3,144 +3,259 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>APT-CEVA2</title>
+    <title>APT - Ceva2</title>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDEq-AGhrBol0dkthbxNiH9MwSY-BMrD9s&libraries=geometry,directions"></script>
+    <link rel="icon" type="image/png" href="njob.png">
+    <link rel="apple-touch-icon" href="njob.png">
+    <link rel="manifest" href='data:application/manifest+json,{"name":"APT - Ceva2","short_name":"APT - Ceva2","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#000000","icons":[{"src":"njob.png","sizes":"192x192","type":"image/png"}]}'>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMdnd3kjfS9rZJodhNclNPffa1Vn2DV5I&libraries=geometry,directions"></script>
 
     <style>
-        :root { --bg: #0b1120; --card: #1e293b; --blue: #38bdf8; --green: #22c55e; --red: #ef4444; --gold: #fbbf24; }
-        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; }
+        :root { --bg: #000; --card: #1e293b; --blue: #38bdf8; --green: #22c55e; --red: #ef4444; --gold: #fbbf24; }
+        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; position: relative; }
         
-        .nav-label { font-size: 1rem; color: var(--blue); font-weight: bold; margin: 8px 0 2px 0; text-transform: uppercase; }
-        .nav-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; flex-shrink: 0; min-height: 45px; }
-        .btn-s { background: var(--card); color: var(--gold); border: 1px solid #444; padding: 10px 15px; border-radius: 8px; font-weight: bold; white-space: nowrap; font-size: 0.9rem; }
+        #splash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+        #splash h1 { color: #ddd; font-size: 2.5rem; font-weight: 900; letter-spacing: 3px; background: #444; padding: 20px 40px; border-radius: 20px; text-transform: uppercase; text-align: center; }
+        .btn-start { background: transparent; color: var(--blue); border: 3px solid var(--blue); padding: 20px 80px; border-radius: 50px; font-size: 1.6rem; font-weight: 900; cursor: pointer; margin-top: 30px; }
+
+        #dim-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; opacity: 0; pointer-events: none; transition: opacity 1.5s ease; z-index: 9000; }
+
+        #map-container { position: relative; flex: 1; width: 100%; border-radius: 15px; overflow: hidden; border: 2px solid #334155; margin-bottom: 8px; }
+        #map { width: 100%; height: 100%; background: #111; }
+
+        #maneuver-panel { 
+            position: absolute; top: 10px; left: 10px; right: 10px;
+            background: rgba(0, 0, 0, 0.85); border: 2px solid var(--blue); border-radius: 12px; 
+            padding: 10px; display: flex; align-items: center; gap: 15px; 
+            min-height: 65px; z-index: 500; backdrop-filter: blur(5px);
+        }
+        #maneuver-dist { font-size: 1.8rem; font-weight: 900; color: var(--gold); white-space: nowrap; }
+        #maneuver-text { font-size: 0.95rem; font-weight: bold; color: #fff; line-height: 1.2; }
+
+        .btn-side { position: absolute; right: 15px; width: 44px; height: 44px; border: 2px solid white; border-radius: 50%; display: none; align-items: center; justify-content: center; z-index: 1000; cursor: pointer; }
+        #exit-btn { top: 90px; background: var(--red); font-size: 24px; font-weight: bold; }
+        #mute-btn { top: 145px; background: var(--blue); font-size: 20px; }
+
+        .nav-label { font-size: 0.75rem; color: var(--blue); font-weight: 900; margin: 2px 0; text-transform: uppercase; }
+        .nav-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; flex-shrink: 0; margin-right: 60px; }
+        .btn-s { background: var(--card); color: #fff; border: 1px solid #444; padding: 6px 10px; border-radius: 6px; font-weight: bold; font-size: 0.75rem; min-width: 55px; }
         .btn-s.active { background: var(--blue); color: black; border-color: white; }
 
-        .display { background: var(--card); border: 1px solid #334155; border-radius: 20px; padding: 15px; text-align: center; margin-bottom: 10px; flex-shrink: 0; }
-        #stop-name { color: var(--blue); font-size: 1.6rem; font-weight: 900; margin: 0; text-transform: uppercase; }
-        #timer { font-size: 4rem; font-weight: 900; margin: 5px 0; color: var(--green); }
-        #gps-msg { color: var(--gold); font-weight: bold; font-size: 1.1rem; min-height: 1.2em; }
+        .display { background: var(--card); border: 2px solid #334155; border-radius: 15px; padding: 8px; text-align: center; margin-bottom: 5px; flex-shrink: 0; }
+        #stop-name { color: var(--blue); font-size: 1.1rem; font-weight: 900; margin: 0; }
+        .timer-container { display: flex; justify-content: center; align-items: baseline; gap: 10px; }
+        #timer { font-size: 2.8rem; font-weight: 900; color: var(--green); }
+        .gps-sub { font-size: 1.3rem; font-weight: 900; color: var(--blue); }
 
-        #map { flex: 1; width: 100%; border-radius: 15px; background: #111; margin-bottom: 10px; border: 2px solid var(--blue); }
+        #speed-panel { background: rgba(30, 41, 59, 0.9); border: 1px solid var(--gold); border-radius: 10px; padding: 4px; text-align: center; margin-bottom: 5px; flex-shrink: 0; }
+        #speed-val { font-size: 2.2rem; font-weight: 900; color: var(--gold); }
 
-        .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; height: 70px; margin-bottom: 5px; flex-shrink: 0; }
-        .btn-nav { background: var(--card); color: white; border: 1px solid #444; border-radius: 15px; font-size: 1.2rem; font-weight: bold; }
-        #btn-next { border: 2px solid var(--blue); color: var(--blue); }
-        
-        button:active { opacity: 0.6; }
+        .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 50px; margin-bottom: 30px; flex-shrink: 0; }
+        .btn-nav { background: var(--card); color: white; border: 1px solid #444; border-radius: 12px; font-size: 1rem; font-weight: bold; }
     </style>
 </head>
-<body>
+<body onclick="resetActivity()" ontouchstart="resetActivity()">
 
-    <div class="nav-label">DO PRACY:</div>
-    <div class="nav-row" id="work-bar"></div>
-
-    <div class="nav-label">POWROTY:</div>
-    <div class="nav-row" id="return-bar"></div>
-
-    <div class="display">
-        <div id="stop-name">ŁADOWANIE...</div>
-        <div id="timer">--</div>
-        <div id="gps-msg">GPS: Szukam sygnału...</div>
+    <div id="splash">
+        <h1>APT - Ceva2</h1>
+        <button class="btn-start" onclick="startApp()">START</button>
     </div>
 
-    <div id="map"></div>
+    <div id="dim-overlay"></div>
+
+    <button id="exit-btn" class="btn-side" onclick="exitApp()">×</button>
+    <button id="mute-btn" class="btn-side" onclick="toggleMute()">🔈</button>
+
+    <div class="nav-label">🔵 WYJAZDY:</div>
+    <div id="work-bar" class="nav-row"></div>
+    <div class="nav-label">🔵 POWROTY:</div>
+    <div id="return-bar" class="nav-row"></div>
+
+    <div class="display">
+        <div id="stop-name">WYBIERZ KURS</div>
+        <div class="timer-container">
+            <div id="timer">--</div>
+            <div class="gps-sub" id="gps-timer">--</div>
+        </div>
+        <div id="gps-msg" style="color: var(--gold); font-size: 0.8rem; font-weight: bold;">ZAPAS: --</div>
+    </div>
+
+    <div id="speed-panel"><span id="speed-val">0</span> <small style="color:#aaa">km/h</small></div>
+
+    <div id="map-container">
+        <div id="maneuver-panel">
+            <div id="maneuver-dist">---</div>
+            <div id="maneuver-text">Czekam na GPS...</div>
+        </div>
+        <div id="map"></div>
+    </div>
 
     <div class="footer">
-        <button class="btn-nav" onclick="move(-1)">POPRZEDNI</button>
-        <button class="btn-nav" id="btn-next" onclick="move(1)">NASTĘPNY</button>
+        <button class="btn-nav" onclick="move(-1)">Wstecz</button>
+        <button class="btn-nav" id="btn-next" style="color:var(--blue)" onclick="handleStep()">Dalej</button>
     </div>
 
 <script>
     var schedules = {
-        "06:00": [ { "n": "RACULKA", "t": "04:47", "la": 51.93288, "ln": 15.54993 }, { "n": "WAZÓW", "t": "04:55", "la": 51.94536, "ln": 15.52031 }, { "n": "CENTRUM", "t": "04:58", "la": 51.94313, "ln": 15.50797 }, { "n": "SOBKOWIAKA", "t": "05:05", "la": 51.96132, "ln": 15.49857 }, { "n": "SULECHÓW", "t": "05:25", "la": 52.08334, "ln": 15.62666 }, { "n": "BRAMA 1", "t": "05:50", "la": 52.09099, "ln": 15.64957 }, { "n": "BRAMA 2", "t": "06:00", "la": 52.0941, "ln": 15.66049 } ],
-        "10:00": [ { "n": "RACULKA", "t": "08:47", "la": 51.93288, "ln": 15.54993 }, { "n": "WAZÓW", "t": "08:55", "la": 51.94536, "ln": 15.52031 }, { "n": "CENTRUM", "t": "08:58", "la": 51.94313, "ln": 15.50797 }, { "n": "SOBKOWIAKA", "t": "09:05", "la": 51.96132, "ln": 15.49857 }, { "n": "SULECHÓW", "t": "09:25", "la": 52.08334, "ln": 15.62666 }, { "n": "BRAMA 1", "t": "09:50", "la": 52.09099, "ln": 15.64957 }, { "n": "BRAMA 2", "t": "10:00", "la": 52.0941, "ln": 15.66049 } ],
-        "12:00": [ { "n": "RACULKA", "t": "10:40", "la": 51.93288, "ln": 15.54993 }, { "n": "WAZÓW", "t": "10:50", "la": 51.94536, "ln": 15.52031 }, { "n": "CENTRUM", "t": "10:53", "la": 51.94313, "ln": 15.50797 }, { "n": "SOBKOWIAKA", "t": "11:00", "la": 51.96132, "ln": 15.49857 }, { "n": "SULECHÓW", "t": "11:25", "la": 52.08334, "ln": 15.62666 }, { "n": "BRAMA 1", "t": "11:50", "la": 52.09099, "ln": 15.64957 }, { "n": "BRAMA 2", "t": "12:00", "la": 52.0941, "ln": 15.66049 } ],
-        "14:00": [ { "n": "RACULKA", "t": "12:35", "la": 51.93288, "ln": 15.54993 }, { "n": "WAZÓW", "t": "12:45", "la": 51.94536, "ln": 15.52031 }, { "n": "CENTRUM", "t": "12:48", "la": 51.94313, "ln": 15.50797 }, { "n": "SOBKOWIAKA", "t": "13:00", "la": 51.96132, "ln": 15.49857 }, { "n": "SULECHÓW", "t": "13:25", "la": 52.08334, "ln": 15.62666 }, { "n": "BRAMA 1", "t": "13:50", "la": 52.09099, "ln": 15.64957 }, { "n": "BRAMA 2", "t": "14:00", "la": 52.0941, "ln": 15.66049 } ],
-        "16:00": [ { "n": "RACULKA", "t": "14:35", "la": 51.93288, "ln": 15.54993 }, { "n": "WAZÓW", "t": "14:45", "la": 51.94536, "ln": 15.52031 }, { "n": "CENTRUM", "t": "14:48", "la": 51.94313, "ln": 15.50797 }, { "n": "SOBKOWIAKA", "t": "15:00", "la": 51.96132, "ln": 15.49857 }, { "n": "SULECHÓW", "t": "15:25", "la": 52.08334, "ln": 15.62666 }, { "n": "BRAMA 1", "t": "15:50", "la": 52.09099, "ln": 15.64957 }, { "n": "BRAMA 2", "t": "16:00", "la": 52.0941, "ln": 15.66049 } ],
-        "18:00": [ { "n": "RACULKA", "t": "16:35", "la": 51.93288, "ln": 15.54993 }, { "n": "WAZÓW", "t": "16:45", "la": 51.94536, "ln": 15.52031 }, { "n": "CENTRUM", "t": "16:48", "la": 51.94313, "ln": 15.50797 }, { "n": "SOBKOWIAKA", "t": "17:00", "la": 51.96132, "ln": 15.49857 }, { "n": "SULECHÓW", "t": "17:25", "la": 52.08334, "ln": 15.62666 }, { "n": "BRAMA 1", "t": "17:50", "la": 52.09099, "ln": 15.64957 }, { "n": "BRAMA 2", "t": "18:00", "la": 52.0941, "ln": 15.66049 } ],
-        "08:15": [ { "n": "BRAMA 2", "t": "08:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
-        "10:15": [ { "n": "BRAMA 2", "t": "10:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
-        "12:15": [ { "n": "BRAMA 2", "t": "12:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
-        "14:15": [ { "n": "BRAMA 2", "t": "14:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
-        "16:15": [ { "n": "BRAMA 2", "t": "16:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
-        "18:15": [ { "n": "BRAMA 2", "t": "18:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
-        "20:15": [ { "n": "BRAMA 2", "t": "20:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ],
-        "22:15": [ { "n": "BRAMA 2", "t": "22:15", "la": 52.0941, "ln": 15.66049 }, { "n": "BRAMA 1", "t": "---", "la": 52.09099, "ln": 15.64957 }, { "n": "SULECHÓW", "t": "---", "la": 52.08334, "ln": 15.62666 }, { "n": "RACULKA", "t": "---", "la": 51.93288, "ln": 15.54993 } ]
+        // WYJAZDY
+        "6:00": [ { "n": "RACULKA", "t": "04:47", "la": 51.9213, "ln": 15.5562 }, { "n": "WAZÓW ZG", "t": "04:55", "la": 51.9366, "ln": 15.5133 }, { "n": "CENTRUM ZG", "t": "04:58", "la": 51.9388, "ln": 15.5055 }, { "n": "SOBKOWIAKA", "t": "05:05", "la": 51.9566, "ln": 15.5155 }, { "n": "SULECHÓW PCK", "t": "05:25", "la": 52.0833, "ln": 15.6255 }, { "n": "CEVA 2 BRAMA 2", "t": "---", "la": 52.094107, "ln": 15.660497 } ],
+        "10:00": [ { "n": "RACULKA", "t": "08:47", "la": 51.9213, "ln": 15.5562 }, { "n": "WAZÓW ZG", "t": "08:55", "la": 51.9366, "ln": 15.5133 }, { "n": "CENTRUM ZG", "t": "08:58", "la": 51.9388, "ln": 15.5055 }, { "n": "SOBKOWIAKA", "t": "09:05", "la": 51.9566, "ln": 15.5155 }, { "n": "SULECHÓW PCK", "t": "09:25", "la": 52.0833, "ln": 15.6255 }, { "n": "CEVA 2 BRAMA 2", "t": "---", "la": 52.094107, "ln": 15.660497 } ],
+        "12:00": [ { "n": "RACULKA", "t": "10:40", "la": 51.9213, "ln": 15.5562 }, { "n": "WAZÓW ZG", "t": "10:50", "la": 51.9366, "ln": 15.5133 }, { "n": "CENTRUM ZG", "t": "10:53", "la": 51.9388, "ln": 15.5055 }, { "n": "SOBKOWIAKA", "t": "11:00", "la": 51.9566, "ln": 15.5155 }, { "n": "SULECHÓW PCK", "t": "11:25", "la": 52.0833, "ln": 15.6255 }, { "n": "CEVA 2 BRAMA 2", "t": "---", "la": 52.094107, "ln": 15.660497 } ],
+        "14:00": [ { "n": "RACULKA", "t": "12:35", "la": 51.9213, "ln": 15.5562 }, { "n": "WAZÓW ZG", "t": "12:45", "la": 51.9366, "ln": 15.5133 }, { "n": "CENTRUM ZG", "t": "12:48", "la": 51.9388, "ln": 15.5055 }, { "n": "SOBKOWIAKA", "t": "13:00", "la": 51.9566, "ln": 15.5155 }, { "n": "SULECHÓW PCK", "t": "13:25", "la": 52.0833, "ln": 15.6255 }, { "n": "CEVA 2 BRAMA 2", "t": "---", "la": 52.094107, "ln": 15.660497 } ],
+        "16:00": [ { "n": "RACULKA", "t": "14:35", "la": 51.9213, "ln": 15.5562 }, { "n": "WAZÓW ZG", "t": "14:45", "la": 51.9366, "ln": 15.5133 }, { "n": "CENTRUM ZG", "t": "14:48", "la": 51.9388, "ln": 15.5055 }, { "n": "SOBKOWIAKA", "t": "15:00", "la": 51.9566, "ln": 15.5155 }, { "n": "SULECHÓW PCK", "t": "15:25", "la": 52.0833, "ln": 15.6255 }, { "n": "CEVA 2 BRAMA 2", "t": "---", "la": 52.094107, "ln": 15.660497 } ],
+        "18:00": [ { "n": "RACULKA", "t": "16:35", "la": 51.9213, "ln": 15.5562 }, { "n": "WAZÓW ZG", "t": "16:45", "la": 51.9366, "ln": 15.5133 }, { "n": "CENTRUM ZG", "t": "16:48", "la": 51.9388, "ln": 15.5055 }, { "n": "SOBKOWIAKA", "t": "17:00", "la": 51.9566, "ln": 15.5155 }, { "n": "SULECHÓW PCK", "t": "17:25", "la": 52.0833, "ln": 15.6255 }, { "n": "CEVA 2 BRAMA 2", "t": "---", "la": 52.094107, "ln": 15.660497 } ],
+
+        // POWROTY (Bez 6:15)
+        "10:15": [ { "n": "CEVA 2 BRAMA 2", "t": "10:15", "la": 52.094107, "ln": 15.660497 }, { "n": "SULECHÓW PCK", "t": "---", "la": 52.0833, "ln": 15.6255 }, { "n": "SOBKOWIAKA", "t": "---", "la": 51.9566, "ln": 15.5155 }, { "n": "CENTRUM ZG", "t": "---", "la": 51.9388, "ln": 15.5055 }, { "n": "WAZÓW ZG", "t": "---", "la": 51.9366, "ln": 15.5133 }, { "n": "RACULKA", "t": "---", "la": 51.9213, "ln": 15.5562 } ],
+        "12:15": [ { "n": "CEVA 2 BRAMA 2", "t": "12:15", "la": 52.094107, "ln": 15.660497 }, { "n": "SULECHÓW PCK", "t": "---", "la": 52.0833, "ln": 15.6255 }, { "n": "SOBKOWIAKA", "t": "---", "la": 51.9566, "ln": 15.5155 }, { "n": "CENTRUM ZG", "t": "---", "la": 51.9388, "ln": 15.5055 }, { "n": "WAZÓW ZG", "t": "---", "la": 51.9366, "ln": 15.5133 }, { "n": "RACULKA", "t": "---", "la": 51.9213, "ln": 15.5562 } ],
+        "14:15": [ { "n": "CEVA 2 BRAMA 2", "t": "14:15", "la": 52.094107, "ln": 15.660497 }, { "n": "SULECHÓW PCK", "t": "---", "la": 52.0833, "ln": 15.6255 }, { "n": "SOBKOWIAKA", "t": "---", "la": 51.9566, "ln": 15.5155 }, { "n": "CENTRUM ZG", "t": "---", "la": 51.9388, "ln": 15.5055 }, { "n": "WAZÓW ZG", "t": "---", "la": 51.9366, "ln": 15.5133 }, { "n": "RACULKA", "t": "---", "la": 51.9213, "ln": 15.5562 } ],
+        "16:15": [ { "n": "CEVA 2 BRAMA 2", "t": "16:15", "la": 52.094107, "ln": 15.660497 }, { "n": "SULECHÓW PCK", "t": "---", "la": 52.0833, "ln": 15.6255 }, { "n": "SOBKOWIAKA", "t": "---", "la": 51.9566, "ln": 15.5155 }, { "n": "CENTRUM ZG", "t": "---", "la": 51.9388, "ln": 15.5055 }, { "n": "WAZÓW ZG", "t": "---", "la": 51.9366, "ln": 15.5133 }, { "n": "RACULKA", "t": "---", "la": 51.9213, "ln": 15.5562 } ],
+        "18:15": [ { "n": "CEVA 2 BRAMA 2", "t": "18:15", "la": 52.094107, "ln": 15.660497 }, { "n": "SULECHÓW PCK", "t": "---", "la": 52.0833, "ln": 15.6255 }, { "n": "SOBKOWIAKA", "t": "---", "la": 51.9566, "ln": 15.5155 }, { "n": "CENTRUM ZG", "t": "---", "la": 51.9388, "ln": 15.5055 }, { "n": "WAZÓW ZG", "t": "---", "la": 51.9366, "ln": 15.5133 }, { "n": "RACULKA", "t": "---", "la": 51.9213, "ln": 15.5562 } ],
+        "20:15": [ { "n": "CEVA 2 BRAMA 2", "t": "20:15", "la": 52.094107, "ln": 15.660497 }, { "n": "SULECHÓW PCK", "t": "---", "la": 52.0833, "ln": 15.6255 }, { "n": "SOBKOWIAKA", "t": "---", "la": 51.9566, "ln": 15.5155 }, { "n": "CENTRUM ZG", "t": "---", "la": 51.9388, "ln": 15.5055 }, { "n": "WAZÓW ZG", "t": "---", "la": 51.9366, "ln": 15.5133 }, { "n": "RACULKA", "t": "---", "la": 51.9213, "ln": 15.5562 } ],
+        "22:15": [ { "n": "CEVA 2 BRAMA 2", "t": "22:15", "la": 52.094107, "ln": 15.660497 }, { "n": "SULECHÓW PCK", "t": "---", "la": 52.0833, "ln": 15.6255 }, { "n": "SOBKOWIAKA", "t": "---", "la": 51.9566, "ln": 15.5155 }, { "n": "CENTRUM ZG", "t": "---", "la": 51.9388, "ln": 15.5055 }, { "n": "WAZÓW ZG", "t": "---", "la": 51.9366, "ln": 15.5133 }, { "n": "RACULKA", "t": "---", "la": 51.9213, "ln": 15.5562 } ]
     };
 
-    var curr = "06:00", idx = 0, map, ds, dr, userPos, liveDelay = 0;
+    var curr = "6:00", idx = 0, map, ds, dr, userPos, liveDelay = 0, wakeLock = null;
+    var userMarker, isMuted = false, lastSirenTime = 0, lastActivity = Date.now(), nextManeuverDistValue = 9999; 
 
-    window.onload = function() { renderNav(); refresh(); initMap(); setInterval(refresh, 1000); initGPS(); };
+    function resetActivity() {
+        lastActivity = Date.now();
+        document.getElementById('dim-overlay').style.opacity = '0';
+        const doc = document.documentElement;
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            if (doc.requestFullscreen) doc.requestFullscreen();
+            else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
+        }
+    }
+
+    function checkDimming() {
+        if ((Date.now() - lastActivity > 15000) && nextManeuverDistValue > 300) {
+            document.getElementById('dim-overlay').style.opacity = '0.7';
+        } else {
+            document.getElementById('dim-overlay').style.opacity = '0';
+        }
+    }
+
+    async function requestWakeLock() {
+        try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+    }
+
+    function autoSelectShift() {
+        const now = new Date();
+        const curMin = now.getHours() * 60 + now.getMinutes();
+        let found = "6:00";
+        const keys = Object.keys(schedules).sort();
+        for (let k of keys) {
+            const [h, m] = schedules[k][0].t.split(':').map(Number);
+            if (h * 60 + m > curMin) { found = k; break; }
+        }
+        curr = found;
+    }
+
+    function startApp() {
+        autoSelectShift(); requestWakeLock();
+        document.getElementById('exit-btn').style.display = 'flex';
+        document.getElementById('mute-btn').style.display = 'flex';
+        document.getElementById('splash').style.opacity = '0';
+        setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 500);
+        renderNav(); initMap(); initGPS(); calc();
+        setInterval(calc, 60000); setInterval(refresh, 1000); setInterval(checkDimming, 1000);
+    }
 
     function initGPS() {
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(p => {
                 userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
-                calc();
+                document.getElementById('speed-val').innerText = (p.coords.speed && p.coords.speed > 0) ? Math.round(p.coords.speed * 3.6) : 0;
+                if (map) {
+                    map.panTo(userPos);
+                    if (p.coords.heading !== null) map.setHeading(p.coords.heading);
+                    if (userMarker) userMarker.setPosition(userPos);
+                    else userMarker = new google.maps.Marker({ position: userPos, map: map, icon: { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 7, fillColor: "#38bdf8", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 } });
+                }
+                let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(schedules[curr][idx].la, schedules[curr][idx].ln));
+                if (d < 150 && idx < schedules[curr].length - 1) { idx++; calc(); refresh(); }
             }, null, { enableHighAccuracy: true });
         }
     }
 
     function initMap() {
         if(typeof google === 'undefined') return;
-        map = new google.maps.Map(document.getElementById("map"), { center: {lat: 51.93, lng: 15.54}, zoom: 14, mapTypeId: 'satellite', disableDefaultUI: true });
-        map.addListener("click", function() {
-            var s = schedules[curr][idx];
-            window.open("https://www.google.com/maps/dir/?api=1&destination=" + s.la + "," + s.ln + "&travelmode=driving", "_blank");
-        });
-        ds = new google.maps.DirectionsService();
-        dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true });
+        map = new google.maps.Map(document.getElementById("map"), { center: {lat: 51.93, lng: 15.50}, zoom: 17, mapTypeId: 'roadmap', tilt: 45, heading: 0, disableDefaultUI: true, gestureHandling: 'greedy' });
+        new google.maps.TrafficLayer().setMap(map);
+        ds = new google.maps.DirectionsService(); dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true });
     }
 
     function calc() {
         if(!userPos || !ds) return;
-        var s = schedules[curr][idx];
-        ds.route({ origin: userPos, destination: {lat: s.la, lng: s.ln}, travelMode: 'DRIVING' }, (res, stat) => {
-            if(stat === 'OK') { dr.setDirections(res); liveDelay = Math.round(res.routes[0].legs[0].duration.value / 60); }
+        ds.route({ origin: userPos, destination: {lat: schedules[curr][idx].la, lng: schedules[curr][idx].ln}, travelMode: google.maps.TravelMode.DRIVING }, (res, stat) => {
+            if(stat === 'OK') { 
+                dr.setDirections(res); 
+                liveDelay = Math.round((res.routes[0].legs[0].duration.value / 60) * 1.16);
+                let step = res.routes[0].legs[0].steps[0];
+                nextManeuverDistValue = step.distance.value;
+                document.getElementById('maneuver-dist').innerText = step.distance.text;
+                document.getElementById('maneuver-text').innerHTML = step.instructions;
+            }
         });
     }
 
     function refresh() {
-        var s = schedules[curr][idx];
-        if(!s) return;
+        let s = schedules[curr][idx];
         document.getElementById('stop-name').innerText = s.n;
-        var timerEl = document.getElementById('timer');
-        var bn = document.getElementById('btn-next');
-        bn.innerText = (idx >= schedules[curr].length - 1) ? "KONIEC ✅" : "NASTĘPNY";
-
+        let tEl = document.getElementById('timer');
+        let gtEl = document.getElementById('gps-timer');
+        gtEl.innerText = formatClock(liveDelay);
         if(s.t === "---") {
-            var now = new Date(); now.setMinutes(now.getMinutes() + liveDelay);
-            timerEl.innerText = now.getHours() + ":" + (now.getMinutes()<10?'0':'') + now.getMinutes();
-            timerEl.style.color = "var(--blue)";
-            document.getElementById('gps-msg').innerText = "DOJAZD: " + liveDelay + " min";
+            let n = new Date(); n.setMinutes(n.getMinutes() + liveDelay);
+            tEl.innerText = n.getHours() + ":" + (n.getMinutes()<10?'0':'') + n.getMinutes();
+            tEl.style.color = "var(--blue)"; gtEl.style.display = "none";
         } else {
-            var p = s.t.split(':'); var target = new Date(); target.setHours(p[0], p[1], 0);
-            var diff = Math.ceil((target - new Date()) / 60000);
+            gtEl.style.display = "block";
+            let p = s.t.split(':'); let tr = new Date(); tr.setHours(p[0], p[1], 0);
+            let diff = Math.ceil((tr - new Date()) / 60000);
             if (diff < -90) diff += 1440;
-            timerEl.innerText = diff + " min";
-            timerEl.style.color = (diff < 0) ? "var(--red)" : "var(--green)";
-            document.getElementById('gps-msg').innerText = userPos ? "DO RUSZENIA: " + (diff - liveDelay) + " min" : "GPS: Czekam...";
+            tEl.innerText = formatClock(diff);
+            tEl.style.color = (diff < 0) ? "var(--red)" : "var(--green)";
+            let zap = diff - liveDelay;
+            document.getElementById('gps-msg').innerText = "ZAPAS: " + formatClock(zap);
+            if (zap === 1 && !isMuted && (Date.now() - lastSirenTime > 60000)) { triggerSiren(); lastSirenTime = Date.now(); }
         }
     }
 
-    function move(d) {
-        if(d === 1 && idx >= schedules[curr].length - 1) location.reload();
-        else if(schedules[curr][idx + d]) { idx += d; refresh(); calc(); }
+    function triggerSiren() {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(); const g = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination); osc.type = 'triangle';
+        osc.frequency.setValueAtTime(400, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.3);
+        osc.start(); osc.stop(ctx.currentTime + 0.7);
+    }
+
+    function formatClock(totalMin) {
+        if (totalMin < 0) return totalMin + " min";
+        let h = Math.floor(totalMin / 60); let m = totalMin % 60;
+        return (h > 0 ? h + "h " : "") + (m < 10 && h > 0 ? "0" + m : m) + "m";
     }
 
     function renderNav() {
-        var w = document.getElementById('work-bar');
-        var r = document.getElementById('return-bar');
+        let w = document.getElementById('work-bar'); let r = document.getElementById('return-bar');
         w.innerHTML = ""; r.innerHTML = "";
-        for(var k in schedules) {
-            var btn = document.createElement('button');
-            btn.className = 'btn-s' + (k === curr ? ' active' : '');
-            btn.innerText = k;
-            btn.onclick = (function(v){ return function(){ curr=v; idx=0; renderNav(); refresh(); calc(); }; })(k);
-            if(k.includes(":00")) { w.appendChild(btn); } else { r.appendChild(btn); }
+        const workHours = ["6:00", "10:00", "12:00", "14:00", "16:00", "18:00"];
+        for(let k in schedules) {
+            let b = document.createElement('button');
+            b.className = 'btn-s' + (k === curr ? ' active' : '');
+            b.innerText = k;
+            b.onclick = (e) => { e.stopPropagation(); curr = k; idx = 0; renderNav(); calc(); refresh(); };
+            if(workHours.includes(k)) w.appendChild(b); else r.appendChild(b);
         }
     }
+
+    function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔈"; }
+    function exitApp() { if(confirm("Zakończyć trasę?")) { if(wakeLock) wakeLock.release(); location.reload(); } }
+    function move(d) { if(schedules[curr][idx + d]) { idx += d; calc(); refresh(); } }
+    function handleStep() { if (idx < schedules[curr].length - 1) { idx++; calc(); refresh(); } else exitApp(); }
 </script>
 </body>
 </html>
