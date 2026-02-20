@@ -20,7 +20,6 @@
 
         .btn-side { position: absolute; right: 15px; width: 44px; height: 44px; border: 2px solid white; border-radius: 50%; font-size: 24px; font-weight: bold; display: none; align-items: center; justify-content: center; z-index: 1000; cursor: pointer; }
         #exit-btn { top: 15px; background: var(--red); }
-        #mute-btn { top: 70px; background: var(--blue); }
 
         .nav-label { font-size: 0.8rem; color: var(--blue); font-weight: 900; margin: 3px 0; text-transform: uppercase; }
         .nav-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; flex-shrink: 0; margin-right: 60px; scroll-behavior: smooth; }
@@ -40,8 +39,12 @@
 
         #gps-msg { font-weight: bold; font-size: 0.9rem; height: 1.2rem; margin-top: 5px; text-align: center; }
 
-        #speed-panel { background: rgba(30, 41, 59, 0.9); border: 1px solid var(--gold); border-radius: 12px; display: flex; align-items: center; justify-content: center; height: 50px; margin-bottom: 8px; }
-        #speed-val { font-size: 1.8rem; font-weight: 900; color: var(--gold); }
+        /* NOWY PANEL: ZEGAR (3/4) I PRĘDKOŚĆ (1/4) */
+        #info-panel { display: flex; gap: 8px; height: 60px; margin-bottom: 8px; flex-shrink: 0; }
+        #clock-box { flex: 3; background: var(--card); border: 2px solid var(--blue); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: #fff; letter-spacing: 2px; }
+        #speed-box { flex: 1; background: var(--card); border: 2px solid var(--gold); border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #speed-val { font-size: 1.8rem; font-weight: 900; color: var(--gold); line-height: 1; }
+        .speed-unit { font-size: 0.6rem; color: #aaa; text-transform: uppercase; font-weight: bold; }
         
         #map-container { position: relative; flex: 1; width: 100%; margin-bottom: 12px; border: 2px solid #334155; border-radius: 15px; overflow: hidden; }
         #map { width: 100%; height: 100%; } 
@@ -60,7 +63,6 @@
     </div>
 
     <button id="exit-btn" class="btn-side" onclick="exitApp()">×</button>
-    <button id="mute-btn" class="btn-side" onclick="toggleMute()">🔈</button>
 
     <div class="nav-label">🔵 DO PRACY (apt):</div>
     <div id="work-bar" class="nav-row"></div>
@@ -81,7 +83,13 @@
         <div id="gps-msg"></div>
     </div>
 
-    <div id="speed-panel"><span id="speed-val">0</span><span style="font-size:0.6rem; color:#aaa; margin-left:5px;">km/h</span></div>
+    <div id="info-panel">
+        <div id="clock-box">00:00:00</div>
+        <div id="speed-box">
+            <div id="speed-val">0</div>
+            <div class="speed-unit">km/h</div>
+        </div>
+    </div>
 
     <div id="map-container">
         <div id="map"></div>
@@ -102,6 +110,14 @@
     const wB1 = { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 };
     const wB2 = { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 };
 
+    const rB2 = { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 };
+    const rB1 = { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 };
+    const rSUL = { "n": "SULECHÓW PCK", "la": 52.083333, "ln": 15.626194 };
+    const rSOB = { "n": "TRASA PÓŁNOCNA (Sobk.)", "la": 51.961472, "ln": 15.499083 };
+    const rCEN = { "n": "ZG CENTRUM", "la": 51.942917, "ln": 15.507750 };
+    const rWAZ = { "n": "STASZICA (Wazów)", "la": 51.946250, "ln": 15.519667 };
+    const rRAC = { "n": "RACULKA", "la": 51.932917, "ln": 15.549861 };
+
     const locCRS = { "n": "PARKING CRS", "la": 51.956111, "ln": 15.528250 };
 
     const h0600 = [{...wRAC, t:"04:47"}, {...wWAZ, t:"04:55"}, {...wCEN, t:"04:58"}, {...wSOB, t:"05:05"}, {...wSUL, t:"05:25"}, {...wB1, t:"---"}, {...wB2, t:"06:00"}];
@@ -111,7 +127,7 @@
     const h1600 = [{...wRAC, t:"14:35"}, {...wWAZ, t:"14:45"}, {...wCEN, t:"14:48"}, {...wSOB, t:"15:00"}, {...wSUL, t:"15:25"}, {...wB1, t:"---"}, {...wB2, t:"16:00"}];
     const h1800 = [{...wRAC, t:"16:35"}, {...wWAZ, t:"16:45"}, {...wCEN, t:"16:48"}, {...wSOB, t:"17:00"}, {...wSUL, t:"17:25"}, {...wB1, t:"---"}, {...wB2, t:"18:00"}];
 
-    function createReturn(time) { return [{...wB2, n:"POWRÓT: "+time, t:time}, {...wB1, t:"---"}, wSUL, wSOB, wCEN, wWAZ, wRAC]; }
+    function createReturn(time) { return [{...rB2, n:"POWRÓT: "+time, t:time}, {...rB1, t:"---"}, rSUL, rSOB, rCEN, rWAZ, rRAC]; }
 
     var schedules = {
         "06:00": h0600, "10:00": h1000, "12:00": h1200, "14:00": h1400, "16:00": h1600, "18:00": h1800,
@@ -119,12 +135,19 @@
         "16:15": createReturn("16:15"), "18:15": createReturn("18:15"), "20:15": createReturn("20:15"), "22:15": createReturn("22:15")
     };
 
-    var curr = "06:00", idx = 0, map, ds, dr, userPos, liveDelay = 0, userMarker, isMuted = false, lastApiCall = 0, currentKmh = 0, specialTarget = null, isFirstCalc = true, currentManeuverPoint = null;
+    var curr = "06:00", idx = 0, map, ds, dr, userPos, liveDelay = 0, userMarker, currentKmh = 0, specialTarget = null, isFirstCalc = true, currentManeuverPoint = null;
 
     function forceFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); }
     function adjustFontSize() { const container = document.getElementById('stop-name-container'); const text = document.getElementById('stop-name'); let fontSize = 40; text.style.fontSize = fontSize + "px"; while (text.offsetWidth < container.offsetWidth - 20 && fontSize < 60) { fontSize++; text.style.fontSize = fontSize + "px"; } while (text.offsetWidth > container.offsetWidth - 10 && fontSize > 10) { fontSize--; text.style.fontSize = fontSize + "px"; } }
     
-    function startApp() { if(typeof google === 'undefined') return; autoSelectKurs(); document.getElementById('splash').style.display = 'none'; document.getElementById('exit-btn').style.display = 'flex'; document.getElementById('mute-btn').style.display = 'flex'; renderNav(); setTimeout(() => { scrollBarsToUpcoming(); adjustFontSize(); }, 400); initMap(); initGPS(); setInterval(calc, 60000); setInterval(refresh, 1000); }
+    // AKTUALIZACJA ZEGARA
+    function updateClock() {
+        const now = new Date();
+        const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0') + ":" + now.getSeconds().toString().padStart(2, '0');
+        document.getElementById('clock-box').innerText = timeStr;
+    }
+
+    function startApp() { if(typeof google === 'undefined') return; autoSelectKursAndStop(); document.getElementById('splash').style.display = 'none'; document.getElementById('exit-btn').style.display = 'flex'; renderNav(); initMap(); initGPS(); setInterval(calc, 60000); setInterval(refresh, 1000); setInterval(updateClock, 1000); }
 
     function initGPS() { 
         if (navigator.geolocation) { 
@@ -132,80 +155,54 @@
                 userPos = { lat: p.coords.latitude, lng: p.coords.longitude }; 
                 currentKmh = (p.coords.speed && p.coords.speed > 0) ? Math.round(p.coords.speed * 3.6) : 0; 
                 document.getElementById('speed-val').innerText = currentKmh; 
-                
                 if (map) { 
-                    map.panTo(userPos); 
-                    if (p.coords.heading !== null) map.setHeading(p.coords.heading); 
-                    map.setTilt(45); 
-
-                    // LOGIKA INTELIGENTNEGO ZOOMU
-                    let targetZoom = 19;
-                    if (currentKmh > 80) targetZoom = 15;
-                    else if (currentKmh > 50) targetZoom = 17;
-
-                    // PRZYBLIŻENIE PRZY MANEWRZE / PRZYSTANKU
-                    if (currentManeuverPoint) {
-                        let distToMan = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), currentManeuverPoint);
-                        if (distToMan < 250) targetZoom = 19; 
-                    }
-
+                    map.panTo(userPos); if (p.coords.heading !== null) map.setHeading(p.coords.heading); map.setTilt(45); 
+                    let targetZoom = 19; if (currentKmh > 80) targetZoom = 15; else if (currentKmh > 50) targetZoom = 17;
+                    if (currentManeuverPoint) { let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), currentManeuverPoint); if (d < 250) targetZoom = 19; }
                     if (map.getZoom() !== targetZoom) map.setZoom(targetZoom);
-
                     const navArrow = { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: "#1a73e8", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, rotation: p.coords.heading || 0 }; 
                     if (!userMarker) userMarker = new google.maps.Marker({ position: userPos, map: map, icon: navArrow, flat: true }); 
                     else { userMarker.setPosition(userPos); userMarker.setIcon(navArrow); } 
                 } 
-                if (isFirstCalc) { calc(); isFirstCalc = false; } 
-                checkAutoArrival(); 
+                if (isFirstCalc) { calc(); isFirstCalc = false; } checkAutoArrival(); 
             }, null, { enableHighAccuracy: true }); 
         } 
     }
 
     function openFullGoogleMaps() {
         if (!userPos) return;
-        let target = specialTarget ? specialTarget : schedules[curr][idx];
-        let dest = target.la + "," + target.ln;
-        let url = `https://www.google.com/maps/dir/?api=1&origin=LAT,LNG&destination=LAT,LNG&travelmode=driving{userPos.lat},${userPos.lng}&destination=${dest}&travelmode=driving`;
-        window.open(url, "_blank");
+        let stops = schedules[curr], origin = `${userPos.lat},${userPos.lng}`, dest, waypoints = [];
+        if (specialTarget) { dest = `${specialTarget.la},${specialTarget.ln}`; } else {
+            dest = `${stops[stops.length - 1].la},${stops[stops.length - 1].ln}`;
+            for (let i = idx; i < stops.length - 1; i++) { waypoints.push(`${stops[i].la},${stops[i].ln}`); }
+        }
+        window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&waypoints=${waypoints.join('|')}&travelmode=driving`, "_blank");
     }
 
     function checkAutoArrival() { 
-        if(!userPos) return; 
-        let target = specialTarget ? specialTarget : schedules[curr][idx];
+        if(!userPos) return; let target = specialTarget ? specialTarget : schedules[curr][idx];
         let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(target.la, target.ln)); 
         if (d < 75) { 
-            if (specialTarget) { specialTarget = null; autoSelectKurs(); renderNav(); calc(); refresh(); }
-            else if (idx < schedules[curr].length - 1) { idx++; calc(); refresh(); } 
+            if (specialTarget) { specialTarget = null; autoSelectKursAndStop(); renderNav(); calc(); }
+            else if (idx < schedules[curr].length - 1) { idx++; calc(); } 
             else { triggerNextKurs(); }
         } 
     }
 
-    function triggerNextKurs() { if (curr.endsWith(":15")) { specialTarget = locCRS; } else { autoSelectKurs(); } renderNav(); calc(); refresh(); scrollBarsToUpcoming(); }
+    function triggerNextKurs() { if (curr.endsWith(":15")) { specialTarget = locCRS; } else { autoSelectKursAndStop(); } renderNav(); calc(); }
 
     function initMap() { 
-        const navStyle = [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]; 
-        map = new google.maps.Map(document.getElementById("map"), { 
-            center: {lat: 51.93, lng: 15.50}, zoom: 19, tilt: 45, heading: 0, 
-            mapId: '404d56c3d3985c59c43ef386', disableDefaultUI: true, styles: navStyle, disableDoubleClickZoom: true 
-        }); 
-        map.addListener('dblclick', openFullGoogleMaps); 
-        new google.maps.TrafficLayer().setMap(map); 
-        ds = new google.maps.DirectionsService(); 
-        dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true, preserveViewport: true }); 
+        map = new google.maps.Map(document.getElementById("map"), { center: {lat: 51.93, lng: 15.50}, zoom: 19, tilt: 45, heading: 0, mapId: '404d56c3d3985c59c43ef386', disableDefaultUI: true, styles: [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }], disableDoubleClickZoom: true }); 
+        map.addListener('dblclick', openFullGoogleMaps); new google.maps.TrafficLayer().setMap(map); 
+        ds = new google.maps.DirectionsService(); dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true, preserveViewport: true }); 
     }
 
     function calc() {
         if(!userPos || !ds) return;
         let destination = specialTarget ? {lat: specialTarget.la, lng: specialTarget.ln} : {lat: schedules[curr][idx].la, lng: schedules[curr][idx].ln};
         ds.route({ origin: userPos, destination: destination, travelMode: google.maps.TravelMode.DRIVING }, (res, stat) => {
-            if(stat === 'OK') { 
-                dr.setDirections(res); 
-                liveDelay = Math.round((res.routes[0].legs[0].duration.value / 60) * 1.15); 
-                // POBIERANIE PUNKTU NASTĘPNEGO MANEWRU DO ZOOMU
-                if (res.routes[0].legs[0].steps.length > 0) {
-                    currentManeuverPoint = res.routes[0].legs[0].steps[0].end_location;
-                }
-            }
+            if(stat === 'OK') { dr.setDirections(res); liveDelay = Math.round((res.routes[0].legs[0].duration.value / 60) * 1.15); 
+            if (res.routes[0].legs[0].steps.length > 0) { currentManeuverPoint = res.routes[0].legs[0].steps[0].end_location; } }
         });
     }
 
@@ -213,24 +210,46 @@
         let s = specialTarget ? specialTarget : schedules[curr][idx];
         const stopNameEl = document.getElementById('stop-name'); const nextBtn = document.getElementById('next-btn'); const gpsMsgEl = document.getElementById('gps-msg');
         const timePart = (s.t && s.t !== "---") ? "(" + s.t + ") " : "";
-        const newStopText = timePart + s.n; if (stopNameEl.innerText !== newStopText) { stopNameEl.innerText = newStopText; adjustFontSize(); }
-        
-        if (specialTarget) { nextBtn.innerText = "ZAKOŃCZ"; nextBtn.classList.add('btn-finish'); } 
-        else { nextBtn.innerText = "NASTĘPNY"; nextBtn.classList.remove('btn-finish'); }
-        
+        if (stopNameEl.innerText !== timePart + s.n) { stopNameEl.innerText = timePart + s.n; adjustFontSize(); }
+        if (specialTarget) { nextBtn.innerText = "ZAKOŃCZ"; nextBtn.classList.add('btn-finish'); } else { nextBtn.innerText = "NASTĘPNY"; nextBtn.classList.remove('btn-finish'); }
         let tEl = document.getElementById('timer'); let etaEl = document.getElementById('eta-timer'); etaEl.innerText = liveDelay > 0 ? liveDelay + "m" : "--";
-        if(!s.t || s.t === "---") { let n = new Date(); n.setMinutes(n.getMinutes() + liveDelay); tEl.innerText = n.getHours() + ":" + (n.getMinutes()<10?'0':'') + n.getMinutes(); tEl.style.color = "var(--blue)"; gpsMsgEl.innerText = ""; } 
-        else { let p = s.t.split(':'); let tr = new Date(); tr.setHours(p[0], p[1], 0); let diff = Math.ceil((tr - new Date()) / 60000); if (diff < -90) diff += 1440; tEl.innerText = diff < 60 ? diff + " min" : Math.floor(diff/60)+"h "+(diff%60)+"m"; tEl.style.color = (diff < 0) ? "var(--red)" : "var(--green)";
-        const delta = diff - liveDelay; gpsMsgEl.style.color = (delta >= 0) ? "var(--gold)" : "var(--red)"; gpsMsgEl.innerText = (delta >= 0) ? "ZAPAS CZASU: " + delta + " min" : "SPÓŹNIENIE: " + Math.abs(delta) + " min"; }
+        
+        if(s.t && s.t !== "---") { 
+            let p = s.t.split(':'); let tr = new Date(); tr.setHours(p[0], p[1], 0); 
+            let diff = Math.ceil((tr - new Date()) / 60000); if (diff < -90) diff += 1440; 
+            tEl.innerText = diff < 60 && diff > -60 ? diff + " min" : Math.floor(diff/60)+"h "+(Math.abs(diff)%60)+"m";
+            tEl.style.color = (diff < 0) ? "var(--red)" : "var(--green)";
+            const delta = diff - liveDelay; gpsMsgEl.style.color = (delta >= 0) ? "var(--gold)" : "var(--red)"; 
+            gpsMsgEl.innerText = (delta >= 0) ? "ZAPAS CZASU: " + delta + " min" : "SPÓŹNIENIE: " + Math.abs(delta) + " min"; 
+        } else { tEl.innerText = "--"; gpsMsgEl.innerText = ""; }
     }
 
-    function scrollBarsToUpcoming() { const rows = [document.getElementById('work-bar'), document.getElementById('return-bar')]; rows.forEach(row => { const act = row.querySelector('.active'); if(act) row.scrollTo({left: act.offsetLeft - 20, behavior: 'smooth'}); }); }
-    function renderNav() { let w = document.getElementById('work-bar'); let r = document.getElementById('return-bar'); w.innerHTML = ""; r.innerHTML = ""; for(let k in schedules) { let b = document.createElement('button'); b.className = 'btn-s' + (k === curr ? ' active' : ''); b.innerText = k; b.onclick = (e) => { e.stopPropagation(); curr = k; idx = 0; specialTarget = null; renderNav(); calc(); }; if (k.endsWith(":15")) r.appendChild(b); else w.appendChild(b); } }
-    function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔈"; }
+    function renderNav() { 
+        let w = document.getElementById('work-bar'), r = document.getElementById('return-bar'); w.innerHTML = ""; r.innerHTML = ""; 
+        for(let k in schedules) { 
+            let b = document.createElement('button'); b.className = 'btn-s' + (k === curr ? ' active' : ''); b.innerText = k; 
+            b.onclick = (e) => { e.stopPropagation(); curr = k; idx = 0; specialTarget = null; renderNav(); calc(); }; 
+            if (k.endsWith(":15")) r.appendChild(b); else w.appendChild(b); 
+        } 
+    }
+
+    function autoSelectKursAndStop() {
+        const now = new Date(), minNow = now.getHours() * 60 + now.getMinutes(), keys = Object.keys(schedules).sort();
+        let selectedKurs = keys[0];
+        for (let k of keys) { const [h, m] = k.split(':').map(Number); if (minNow < (h * 60 + m + 90)) { selectedKurs = k; break; } }
+        curr = selectedKurs; idx = 0;
+        for (let i = 0; i < schedules[curr].length; i++) {
+            let stopTime = schedules[curr][i].t;
+            if (stopTime && stopTime !== "---") {
+                const [sh, sm] = stopTime.split(':').map(Number);
+                if ((sh * 60 + sm + 90) > minNow) { idx = i; break; }
+            }
+        }
+    }
+
     function exitApp() { if(confirm("Zakończyć?")) location.reload(); }
     function move(d) { if(schedules[curr] && schedules[curr][idx + d]) { idx += d; specialTarget = null; calc(); } }
-    function handleStep() { if (specialTarget) { specialTarget = null; autoSelectKurs(); renderNav(); calc(); } else if (idx >= (schedules[curr]?.length || 0) - 1) triggerNextKurs(); else { idx++; calc(); } }
-    function autoSelectKurs() { const now = new Date(); const minNow = now.getHours() * 60 + now.getMinutes(); const keys = Object.keys(schedules).sort(); let selected = keys[0]; for (let k of keys) { const [h, m] = k.split(':').map(Number); if (minNow < (h * 60 + m) + 60) { selected = k; break; } } curr = selected; }
+    function handleStep() { if (specialTarget) { specialTarget = null; autoSelectKursAndStop(); renderNav(); calc(); } else if (idx >= (schedules[curr]?.length || 0) - 1) triggerNextKurs(); else { idx++; calc(); } }
 </script>
 </body>
 </html>
