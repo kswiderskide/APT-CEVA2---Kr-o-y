@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>APT - CEVA2 FINAL</title>
+
+    <link rel="icon" type="image/png" href="njob.png">
+    <link rel="apple-touch-icon" href="njob.png">
+    <link rel="manifest" href='data:application/manifest+json,{"name":"APT","short_name":"APT","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#000000"}'>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMdnd3kjfS9rZJodhNclNPffa1Vn2DV5I&libraries=geometry,directions"></script>
+
+    <style>
+        :root { --bg: #000; --card: #1e293b; --blue: #38bdf8; --green: #22c55e; --red: #ef4444; --gold: #fbbf24; }
+        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; position: relative; }
+        
+        #splash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #splash h1 { color: #ddd; font-size: 4rem; font-weight: 900; margin-bottom: 50px; letter-spacing: 10px; background: #334155; padding: 20px 50px; border-radius: 20px; }
+        .btn-start { background: transparent; color: var(--blue); border: 3px solid var(--blue); padding: 20px 80px; border-radius: 50px; font-size: 1.8rem; font-weight: 900; cursor: pointer; }
+
+        .btn-side { position: absolute; right: 15px; width: 44px; height: 44px; border: 2px solid white; border-radius: 50%; font-size: 24px; font-weight: bold; display: none; align-items: center; justify-content: center; z-index: 1000; cursor: pointer; }
+        #exit-btn { top: 15px; background: var(--red); color: white; }
+        #mute-btn { top: 70px; background: var(--blue); color: white; }
+
+        .nav-label { font-size: 0.85rem; color: var(--blue); font-weight: 900; margin: 3px 0; text-transform: uppercase; letter-spacing: 1px; }
+        .nav-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; flex-shrink: 0; margin-right: 60px; scroll-behavior: smooth; }
+        .nav-row::-webkit-scrollbar { display: none; }
+        .btn-s { background: var(--card); color: #fff; border: 1px solid #444; padding: 10px 14px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; min-width: 75px; white-space: nowrap; }
+        .btn-s.active { background: var(--blue); color: black; border-color: white; box-shadow: 0 0 12px var(--blue); }
+
+        .display { background: var(--card); border: 2px solid #334155; border-radius: 20px; padding: 12px; text-align: center; margin-bottom: 8px; flex-shrink: 0; }
+        #stop-name { color: var(--blue); font-size: 1.8rem; font-weight: 900; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -1px; }
+        #timer { font-size: 3.4rem; font-weight: 900; color: var(--green); margin: 2px 0; }
+        .gps-sub { font-size: 1.4rem; font-weight: 900; color: var(--blue); opacity: 0.9; }
+
+        #instrument-row { display: flex; gap: 10px; margin-bottom: 8px; height: 65px; flex-shrink: 0; }
+        #speed-panel { flex: 1; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--gold); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #clock-panel { flex: 3; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--blue); border-radius: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        #speed-val { font-size: 1.8rem; font-weight: 900; color: var(--gold); }
+        #clock-val { font-size: 2.6rem; font-weight: 900; color: white; letter-spacing: 1px; }
+
+        @keyframes blink-alarm { 0%, 100% { background: var(--card); } 50% { background: var(--red); } }
+        .alarm-active { animation: blink-alarm 0.4s infinite !important; border-color: white !important; }
+
+        @keyframes blink-late { 0% { background: var(--red); } 3% { background: rgba(30,41,59,0.9); } 6% { background: var(--red); } 9% { background: rgba(30,41,59,0.9); } 100% { background: rgba(30,41,59,0.9); } }
+        .late-warning { animation: blink-late 10s infinite; }
+
+        #map-container { position: relative; flex: 1; width: 100%; margin-bottom: 12px; border: 2px solid #334155; border-radius: 15px; overflow: hidden; cursor: pointer; }
+        #map { width: 100%; height: 100%; pointer-events: none; } 
+        
+        #nav-overlay { 
+            position: absolute; top: 10px; left: 10px; z-index: 50;
+            background: rgba(0, 0, 0, 0.85); border: 2px solid var(--blue);
+            border-radius: 12px; padding: 12px; min-width: 95px;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        #nav-icon-svg { width: 50px; height: 50px; margin-bottom: 4px; fill: white; }
+        #nav-dist { font-size: 1.4rem; font-weight: 900; color: white; }
+
+        /* POPRAWKA: IDENTYCZNY STYL OBU PRZYCISKÓW */
+        .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 65px; margin-bottom: 85px; flex-shrink: 0; }
+        .btn-nav { background: var(--card); color: var(--blue); border: 2px solid var(--blue); border-radius: 12px; font-size: 1.1rem; font-weight: bold; text-transform: uppercase; }
+        .btn-nav:active { background: var(--blue); color: black; }
+    </style>
+</head>
+<body onclick="forceFullScreen()">
+
+    <div id="splash">
+        <h1>APT</h1>
+        <button class="btn-start" onclick="startApp()">START</button>
+    </div>
+
+    <button id="exit-btn" class="btn-side" onclick="exitApp()">×</button>
+    <button id="mute-btn" class="btn-side" onclick="toggleMute()">🔈</button>
+
+    <div class="nav-label">🔵 DO PRACY:</div>
+    <div id="work-bar" class="nav-row"></div>
+    <div class="nav-label">🔵 POWRÓT:</div>
+    <div id="return-bar" class="nav-row"></div>
+
+    <div class="display">
+        <div id="stop-name">CZEKAJ...</div>
+        <div id="timer">--</div>
+        <div class="gps-sub" id="gps-timer">--</div>
+        <div id="gps-msg" style="color:var(--gold); font-weight:bold; font-size:0.8rem;">GPS: ...</div>
+    </div>
+
+    <div id="instrument-row">
+        <div id="speed-panel"><span id="speed-val">0</span><span style="font-size:0.6rem; color:#aaa; margin-left:2px;">km/h</span></div>
+        <div id="clock-panel"><span id="clock-val">00:00:00</span></div>
+    </div>
+
+    <div id="map-container">
+        <div id="nav-overlay">
+            <svg id="nav-icon-svg" viewBox="0 0 24 24"><path d=""/></svg>
+            <div id="nav-dist">--- m</div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <div class="footer">
+        <button class="btn-nav" onclick="move(-1)">Poprzedni</button>
+        <button class="btn-nav" onclick="handleStep()">Następny</button>
+    </div>
+
+<script>
+    const aptWorkPoints = [
+        { "n": "RACULKA", "la": 51.932917, "ln": 15.549861 },
+        { "n": "STASZICA", "la": 51.946250, "ln": 15.519667 },
+        { "n": "ZG CENTRUM", "la": 51.942917, "ln": 15.507750 },
+        { "n": "TRASA PÓŁNOCNA", "la": 51.961472, "ln": 15.499083 },
+        { "n": "SULECHÓW PCK", "la": 52.083333, "ln": 15.626194 },
+        { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 },
+        { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 }
+    ];
+
+    const aptReturnPoints = [
+        { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 },
+        { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 },
+        { "n": "SULECHÓW PCK", "la": 52.083333, "ln": 15.626194 },
+        { "n": "TRASA PÓŁNOCNA", "la": 51.961472, "ln": 15.499083 },
+        { "n": "ZG CENTRUM", "la": 51.942917, "ln": 15.507750 },
+        { "n": "STASZICA", "la": 51.946250, "ln": 15.519667 },
+        { "n": "RACULKA", "la": 51.932917, "ln": 15.549861 }
+    ];
+
+    var schedules = {
+        "04:47": aptWorkPoints.map((s,i) => ({...s, t: ["04:47","04:55","04:58","05:05","05:25","---","---"][i]})),
+        "08:47": aptWorkPoints.map((s,i) => ({...s, t: ["08:47","08:55","08:58","09:05","09:25","---","---"][i]})),
+        "10:40": aptWorkPoints.map((s,i) => ({...s, t: ["10:40","10:50","10:53","11:00","11:25","---","---"][i]})),
+        "12:35": aptWorkPoints.map((s,i) => ({...s, t: ["12:35","12:45","12:48","13:00","13:25","---","---"][i]})),
+        "14:35": aptWorkPoints.map((s,i) => ({...s, t: ["14:35","14:45","14:48","15:00","15:25","---","---"][i]})),
+        "16:35": aptWorkPoints.map((s,i) => ({...s, t: ["16:35","16:45","16:48","17:00","17:25","---","---"][i]})),
+        "10:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "10:15" : "---"})),
+        "12:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "12:15" : "---"})),
+        "14:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "14:15" : "---"})),
+        "16:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "16:15" : "---"})),
+        "18:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "18:15" : "---"})),
+        "20:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "20:15" : "---"})),
+        "22:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "22:15" : "---"}))
+    };
+
+    var labels = { 
+        "04:47": "6:00", "08:47": "10:00", "10:15": "10:15", "10:40": "12:00", "12:15": "12:15", "12:35": "14:00", 
+        "14:15": "14:15", "14:35": "16:00", "16:15": "16:15", "16:35": "18:00", "18:15": "18:15", "20:15": "20:15", "22:15": "22:15"
+    };
+
+    var curr = "04:47", idx = 0, map, ds, dr, userPos, liveDelay = 0, userMarker, wakeLock = null;
+    var isMuted = false, currentNextManeuverLoc = null, lastApiCall = 0, catchupDone = false, currentKmh = 0;
+    var atStopIdx = -1, alarmPlayedForIdx = -1, audioCtx = null, lastTap = 0;
+
+    const iconPaths = { "straight": "M11,9L11,19L13,19L13,9L15.5,11.5L16.92,10.08L12,5.16L7.08,10.08L8.5,11.5L11,9Z", "turn-right": "M17,14L17,5L15,5L15,12L7,12L7,10L3,14L7,18L7,16L15,16C16.1,16 17,15.1 17,14Z", "turn-left": "M7,14L7,5L9,5L9,12L17,12L17,10L21,14L17,18L17,16L9,16C7.9,16 7,15.1 7,14Z", "roundabout": "M12,2A10,10 0 1,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 1,0 20,12A8,8 0 0,0 12,4M13,8V6H11V8H13M13,18V16H11V18H13M18,13H16V11H18V13M8,13H6V11H8V13Z" };
+
+    function forceFullScreen() {
+        if (!document.fullscreenElement && document.getElementById('splash').style.display === 'none') {
+            document.documentElement.requestFullscreen().catch(()=>{});
+        }
+        if (!wakeLock && document.getElementById('splash').style.display === 'none') requestWakeLock();
+    }
+
+    async function requestWakeLock() { 
+        try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } } catch (err) {} 
+    }
+
+    function autoSelectKurs() {
+        const now = new Date(); const minNow = now.getHours() * 60 + now.getMinutes();
+        const keys = Object.keys(labels).sort(); let selected = keys[0];
+        for (let k of keys) {
+            const [h, m] = k.split(':').map(Number);
+            if (minNow < (h * 60 + m) + 90) { selected = k; break; }
+        }
+        curr = selected;
+    }
+
+    function scrollBarsToUpcoming() {
+        const now = new Date(); const minNow = now.getHours() * 60 + now.getMinutes();
+        ['work-bar', 'return-bar'].forEach(barId => {
+            const bar = document.getElementById(barId); const buttons = bar.getElementsByTagName('button');
+            let targetBtn = null;
+            for (let btn of buttons) {
+                const [h, m] = btn.getAttribute('data-time').split(':').map(Number);
+                if (minNow < (h * 60 + m) + 90) { targetBtn = btn; break; }
+            }
+            if (!targetBtn && buttons.length > 0) targetBtn = buttons[0];
+            if (targetBtn) bar.scrollLeft = targetBtn.offsetLeft - 10;
+        });
+    }
+
+    function playBeep(freq, dur) {
+        if (!audioCtx || isMuted) return;
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.value = freq; gain.gain.value = 0.15;
+        osc.start(); setTimeout(() => osc.stop(), dur);
+    }
+
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clock-val').innerText = now.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    setInterval(updateClock, 1000);
+
+    function startApp() {
+        if(typeof google === 'undefined') { alert("Google Maps niezaładowane! Sprawdź internet."); return; }
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        autoSelectKurs(); requestWakeLock();
+        document.getElementById('splash').style.display = 'none';
+        document.getElementById('exit-btn').style.display = 'flex';
+        document.getElementById('mute-btn').style.display = 'flex';
+        document.getElementById('nav-overlay').style.display = 'flex';
+        
+        document.getElementById('map-container').addEventListener('touchstart', function(e) {
+            let now = Date.now();
+            if (now - lastTap < 350) { openFullGoogleMaps(); }
+            lastTap = now;
+        });
+
+        renderNav(); setTimeout(scrollBarsToUpcoming, 400); initMap(); initGPS();
+        calc(); setInterval(calc, 60000); setInterval(refresh, 1000);
+    }
+
+    function initGPS() {
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(p => {
+                userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
+                currentKmh = (p.coords.speed && p.coords.speed > 0) ? Math.round(p.coords.speed * 3.6) : 0;
+                document.getElementById('speed-val').innerText = currentKmh;
+                document.getElementById('gps-msg').innerText = "GPS: OK";
+                if (map) {
+                    map.panTo(userPos);
+                    if (!userMarker) userMarker = new google.maps.Marker({ position: userPos, map: map, icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: "#38bdf8", fillOpacity: 1, strokeColor: "white", strokeWeight: 2 } });
+                    else userMarker.setPosition(userPos);
+                }
+                if (currentNextManeuverLoc) {
+                    let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), currentNextManeuverLoc);
+                    document.getElementById('nav-dist').innerText = d > 1000 ? (d/1000).toFixed(1) + " km" : Math.round(d) + " m";
+                    if (d < 35 && (Date.now() - lastApiCall > 10000)) calc();
+                }
+                if (!catchupDone) { performCatchup(); catchupDone = true; }
+                checkAutoArrival();
+            }, e => { document.getElementById('gps-msg').innerText = "BŁĄD GPS: " + e.message; }, { enableHighAccuracy: true });
+        }
+    }
+
+    function performCatchup() {
+        let stops = schedules[curr];
+        for (let i = 0; i < stops.length - 1; i++) {
+            let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(stops[i].la, stops[i].ln));
+            if (d < 500) { idx = Math.min(i + 1, stops.length - 1); calc(); refresh(); break; }
+        }
+    }
+
+    function openFullGoogleMaps() {
+        if (!userPos) return;
+        let stops = schedules[curr];
+        let waypoints = stops.slice(idx, -1).map(s => s.la + "," + s.ln).join('|');
+        let dest = stops[stops.length-1].la + "," + stops[stops.length-1].ln;
+        let url = `https://www.google.com/maps/dir/?api=1&origin=${userPos.lat},${userPos.lng}&destination=${dest}&waypoints=${encodeURIComponent(waypoints)}&travelmode=driving`;
+        window.open(url, "_blank");
+    }
+
+    function checkAutoArrival() {
+        if(!userPos || typeof google === 'undefined') return;
+        let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(schedules[curr][idx].la, schedules[curr][idx].ln));
+        if (d < 75 && idx < schedules[curr].length - 1) { atStopIdx = idx; idx++; calc(); refresh(); }
+    }
+
+    function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), { center: {lat: 51.93, lng: 15.50}, zoom: 16, disableDefaultUI: true, gestureHandling: 'none' });
+        new google.maps.TrafficLayer().setMap(map);
+        ds = new google.maps.DirectionsService(); dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true });
+    }
+
+    function calc() {
+        if(!userPos || !ds) return;
+        lastApiCall = Date.now();
+        ds.route({ origin: userPos, destination: {lat: schedules[curr][idx].la, lng: schedules[curr][idx].ln}, travelMode: google.maps.TravelMode.DRIVING }, (res, stat) => {
+            if(stat === 'OK') { 
+                dr.setDirections(res); liveDelay = Math.round((res.routes[0].legs[0].duration.value / 60) * 1.16);
+                const step = res.routes[0].legs[0].steps[0]; currentNextManeuverLoc = step.end_location;
+                const man = (step.maneuver || "straight").toLowerCase();
+                let path = iconPaths["straight"];
+                if (man.includes("left")) path = iconPaths["turn-left"]; else if (man.includes("right")) path = iconPaths["turn-right"]; else if (man.includes("roundabout")) path = iconPaths["roundabout"];
+                document.getElementById('nav-icon-svg').querySelector('path').setAttribute('d', path);
+            }
+        });
+    }
+
+    function refresh() {
+        let s = schedules[curr][idx];
+        document.getElementById('stop-name').innerText = s.n + " ("+s.t+")";
+        let tEl = document.getElementById('timer'); let gtEl = document.getElementById('gps-timer');
+        let clockPanel = document.getElementById('clock-panel');
+        gtEl.innerText = (liveDelay > 0) ? (liveDelay < 60 ? liveDelay + "m" : Math.floor(liveDelay/60)+"h "+(liveDelay%60)+"m") : "--";
+        
+        let diff = 0;
+        if(s.t === "---") {
+            let n = new Date(); n.setMinutes(n.getMinutes() + liveDelay);
+            tEl.innerText = n.getHours() + ":" + (n.getMinutes()<10?'0':'') + n.getMinutes();
+            tEl.style.color = "var(--blue)"; gtEl.style.display = "none";
+        } else {
+            gtEl.style.display = "block";
+            let p = s.t.split(':'); let tr = new Date(); tr.setHours(p[0], p[1], 0);
+            diff = Math.ceil((tr - new Date()) / 60000); if (diff < -90) diff += 1440;
+            tEl.innerText = diff < 60 ? diff + " min" : Math.floor(diff/60)+"h "+(diff%60)+"m";
+            tEl.style.color = (diff < 0) ? "var(--red)" : "var(--green)";
+            document.getElementById('gps-msg').innerText = "ZAPAS: " + (diff - liveDelay) + " min";
+        }
+
+        if (currentKmh > 10) { atStopIdx = -1; alarmPlayedForIdx = -1; }
+        let isAlarming = false;
+        if (atStopIdx !== -1) {
+            let stop = schedules[curr][atStopIdx];
+            if (stop.t !== "---") {
+                let p = stop.t.split(':'); let depTime = new Date(); depTime.setHours(p[0], p[1], 0);
+                if (new Date() >= depTime && currentKmh < 5) {
+                    isAlarming = true; clockPanel.classList.add('alarm-active');
+                    if (alarmPlayedForIdx !== atStopIdx) { playBeep(920, 2000); alarmPlayedForIdx = atStopIdx; }
+                }
+            }
+        }
+        if (!isAlarming) {
+            clockPanel.classList.remove('alarm-active');
+            if (diff < 0) clockPanel.classList.add('late-warning'); else clockPanel.classList.remove('late-warning');
+        }
+    }
+
+    function renderNav() {
+        let w = document.getElementById('work-bar'); let r = document.getElementById('return-bar');
+        w.innerHTML = ""; r.innerHTML = "";
+        for(let k in schedules) {
+            let b = document.createElement('button'); b.className = 'btn-s' + (k === curr ? ' active' : '');
+            b.innerText = labels[k] || k;
+            b.setAttribute('data-time', k);
+            b.onclick = (e) => { e.stopPropagation(); curr = k; idx = 0; atStopIdx = -1; alarmPlayedForIdx = -1; catchupDone = false; renderNav(); calc(); };
+            if (["10:15", "12:15", "14:15", "16:15", "18:15", "20:15", "22:15"].includes(k)) r.appendChild(b); else w.appendChild(b);
+        }
+    }
+
+    function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔈"; }
+    function exitApp() { if(confirm("Zakończyć?")) location.reload(); }
+    function move(d) { if(schedules[curr][idx + d]) { idx += d; atStopIdx = -1; alarmPlayedForIdx = -1; calc(); } }
+    function handleStep() { if (idx >= schedules[curr].length - 1) exitApp(); else { idx++; atStopIdx = -1; alarmPlayedForIdx = -1; calc(); } }
+</script>
+</body>
+</html>
