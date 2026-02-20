@@ -3,37 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>APT - CEVA2</title>
+    <title>APT - CEVA 2</title>
 
-    <link rel="icon" type="image/png" href="njob.png">
-    <link rel="apple-touch-icon" href="njob.png">
+    <link rel="icon" type="image/png" href="APT.png">
+    <link rel="apple-touch-icon" href="APT.png">
     <link rel="manifest" href='data:application/manifest+json,{"name":"APT","short_name":"APT","start_url":".","display":"standalone","background_color":"#000000","theme_color":"#000000"}'>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAMdnd3kjfS9rZJodhNclNPffa1Vn2DV5I&libraries=geometry,directions"></script>
 
     <style>
-        :root { --bg: #000; --card: #1e293b; --blue: #38bdf8; --green: #22c55e; --red: #ef4444; --gold: #fbbf24; }
+        :root { --bg: #000; --card: #1e293b; --blue: #1a73e8; --green: #1ed760; --red: #d93025; --gold: #fbc02d; }
         body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; padding: 10px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; position: relative; }
         
         #splash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        #splash h1 { color: #ddd; font-size: 4rem; font-weight: 900; margin-bottom: 50px; letter-spacing: 10px; background: #334155; padding: 20px 50px; border-radius: 20px; }
+        #splash img { width: 180px; height: auto; margin-bottom: 50px; border-radius: 20px; }
+        
         .btn-start { background: transparent; color: var(--blue); border: 3px solid var(--blue); padding: 20px 80px; border-radius: 50px; font-size: 1.8rem; font-weight: 900; cursor: pointer; }
 
         .btn-side { position: absolute; right: 15px; width: 44px; height: 44px; border: 2px solid white; border-radius: 50%; font-size: 24px; font-weight: bold; display: none; align-items: center; justify-content: center; z-index: 1000; cursor: pointer; }
-        #exit-btn { top: 15px; background: var(--red); color: white; }
-        #mute-btn { top: 70px; background: var(--blue); color: white; }
+        #exit-btn { top: 15px; background: var(--red); }
+        #mute-btn { top: 70px; background: var(--blue); }
 
-        .nav-label { font-size: 0.85rem; color: var(--blue); font-weight: 900; margin: 3px 0; text-transform: uppercase; letter-spacing: 1px; }
+        .nav-label { font-size: 0.8rem; color: var(--blue); font-weight: 900; margin: 3px 0; text-transform: uppercase; }
         .nav-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; flex-shrink: 0; margin-right: 60px; scroll-behavior: smooth; }
         .nav-row::-webkit-scrollbar { display: none; }
         .btn-s { background: var(--card); color: #fff; border: 1px solid #444; padding: 10px 14px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; min-width: 75px; white-space: nowrap; }
-        .btn-s.active { background: var(--blue); color: black; border-color: white; box-shadow: 0 0 12px var(--blue); }
+        .btn-s.active { background: var(--blue); color: white; border-color: white; box-shadow: 0 0 12px var(--blue); }
 
-        .display { background: var(--card); border: 2px solid #334155; border-radius: 20px; padding: 12px; text-align: center; margin-bottom: 8px; flex-shrink: 0; }
-        #stop-name { color: var(--blue); font-size: 1.8rem; font-weight: 900; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -1px; }
-        #timer { font-size: 3.4rem; font-weight: 900; color: var(--green); margin: 2px 0; }
-        .gps-sub { font-size: 1.4rem; font-weight: 900; color: var(--blue); opacity: 0.9; }
+        .display { background: var(--card); border: 2px solid #334155; border-radius: 20px; padding: 12px; text-align: center; margin-bottom: 8px; flex-shrink: 0; overflow: hidden; }
+        #stop-name-container { width: 100%; display: flex; justify-content: center; align-items: center; white-space: nowrap; }
+        #stop-name { color: var(--blue); font-weight: 900; margin: 0; line-height: 1.1; letter-spacing: -1px; display: inline-block; }
 
+        #timer-row { display: flex; align-items: baseline; justify-content: center; gap: 15px; margin: 2px 0; }
+        #timer { font-size: 3.4rem; font-weight: 900; color: var(--green); }
+        #eta-container { display: flex; flex-direction: column; align-items: flex-start; }
+        #eta-timer { font-size: 1.6rem; font-weight: 900; color: var(--blue); }
+        .eta-label { font-size: 0.6rem; color: #aaa; text-transform: uppercase; margin-bottom: -4px; font-weight: bold; }
+
+        #gps-msg { font-weight: bold; font-size: 0.9rem; height: 1.2rem; }
+
+        #instrument-row { display: flex; gap: 10px; margin-bottom: 8px; height: 65px; flex-shrink: 0; }
+        #speed-panel { flex: 1; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--gold); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #clock-panel { flex: 3; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--blue); border-radius: 12px; display: flex; align-items: center; justify-content: center; position: relative; }
+        #speed-val { font-size: 1.8rem; font-weight: 900; color: var(--gold); }
+        #clock-val { font-size: 2.6rem; font-weight: 900; color: white; }
+
+        @keyframes blink-alarm { 0%, 100% { background: var(--card); } 50% { background: var(--red); } }
+        .alarm-active { animation: blink-alarm 0.5s infinite !important; }
+        @keyframes blink-late { 0% { background: var(--red); } 3% { background: rgba(30,41,59,0.9); } 6% { background: var(--red); } 9% { background: rgba(30,41,59,0.9); } 100% { background: rgba(30,41,59,0.9); } }
+        .late-warning { animation: blink-late 10s infinite; }
+
+        #map-container { position: relative; flex: 1; width: 100%; margin-bottom: 12px; border: 2px solid #334155; border-radius: 15px; overflow: hidden; cursor: pointer; }
+        #map { width: 100%; height: 100%; pointer-events: none; } 
+        
+        #nav-overlay { 
+            position: absolute; top: 10px; left: 10px; z-index: 50;
+            background: white; border-radius: 12px; padding: 8px 12px; 
+            min-width: 80px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+        }
+        #nav-icon-svg { width: 55px; height: 55px; fill: var(--blue); }
+        #nav-dist { font-size: 1.5rem; font-weight: 900; color: #222; margin-top: -2px; }
+
+        .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 65px; margin-bottom: 85px; flex-shrink: 0; }
+        .btn-nav { background: var(--card); color: var(--blue); border: 2px solid var(--blue); border-radius: 12px; font-size: 1.1rem; font-weight: bold; text-transform: uppercase; }
+        .btn-nav:active { background: var(--blue); color: black; }
+    </style>
+</head>
+<body onclick="forceFullScreen()">
+
+    <div id="splash">
+        <img src="APT.png" alt="Logo">
+        <button class="btn-start" onclick="startApp()">START</button>
+    </div>
+
+    <button id="exit-btn" class="btn-side" onclick="exitApp()">×</button>
+    <button id="mute-btn" class="btn-side" onclick="toggleMute()">🔈</button>
+
+    <div class="nav-label">🔵 DO PRACY:</div>
+    <div id="work-bar" class="nav-row"></div>
+    <div class="nav-label">🔵 POWRÓT:</div>
+    <div id="return-bar" class="nav-row"></div>
+
+    <div class="display">
+        <div id="stop-name-container">
+            <div id="stop-name">CZEKAJ...</div>
+        </div>
+        <div id="timer-row">
+            <div id="timer">--</div>
+            <div id="eta-container">
+                <span class="eta-label">Dojedziesz za</span>
+                <div id="eta-timer">--</div>
+            </div>
+        </div>
+        <div id="gps-msg"></div>
+    </div>
+
+    <div id="instrument-row">
+        <div id="speed-panel"><span id="speed-val">0</span><span style="font-size:0.6rem; color:#aaa; margin-left:2px;">km/h</span></div>
+        <div id="clock-panel"><span id="clock-val">00:00:00</span></div>
+    </div>
+
+    <div id="map-container">
+        <div id="nav-overlay">
+            <svg id="nav-icon-svg" viewBox="0 0 24 24"><path d=""/></svg>
+            <div id="nav-dist">--- m</div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <div class="footer">
+        <button class="btn-nav" onclick="move(-1)">Poprzedni</button>
+        <button class="btn-nav" onclick="handleStep()">Następny</button>
+    </div>
+
+<script>
+    const aptWorkPoints = [
+        { "n": "RACULKA", "la": 51.932917, "ln": 15.549861 },
+        { "n": "STASZICA", "la": 51.946250, "ln": 15.519667 },
+        { "n": "ZG CENTRUM", "la": 51.942917, "ln": 15.507750 },
+        { "n": "TRASA PÓŁNOCNA", "la": 51.961472, "ln": 15.499083 },
+        { "n": "SULECHÓW PCK", "la": 52.083333, "ln": 15.626194 },
+        { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 },
+        { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 }
+    ];
+
+    const aptReturnPoints = [
+        { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 },
+        { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 },
+        { "n": "SULECHÓW PCK", "la": 52.083333, "ln": 15.626194 },
+        { "n": "TRASA PÓŁNOCNA", "la": 51.961472, "ln": 15.499083 },
+        { "n": "ZG CENTRUM", "la": 51.942917, "ln": 15.507750 },
+        { "n": "STASZICA", "la": 51.946250, "ln": 15.519667 },
+        { "n": "RACULKA", "la": 51.932917, "ln": 15.549861 }
+    ];
+
+    var schedules = {
+        "04:47": aptWorkPoints.map((s,i) => ({...s, t: ["04:47","04:55","04:58","05:05","05:25","---","---"][i]})),
+        "08:47": aptWorkPoints.map((s,i) => ({...s, t: ["08:47","08:55","08:58","09:05","09:25","---","---"][i]})),
+        "10:40": aptWorkPoints.map((s,i) => ({...s, t: ["10:4
         #instrument-row { display: flex; gap: 10px; margin-bottom: 8px; height: 65px; flex-shrink: 0; }
         #speed-panel { flex: 1; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--gold); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         #clock-panel { flex: 3; background: rgba(30, 41, 59, 0.9); border: 1px solid var(--blue); border-radius: 12px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; position: relative; }
