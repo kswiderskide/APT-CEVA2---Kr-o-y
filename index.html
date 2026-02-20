@@ -93,27 +93,17 @@
     </div>
 
 <script>
-    // --- SEKRETY TRASY DO PRACY ---
+    // TWOJE PRECYZYJNE WSPÓŁRZĘDNE (apt)
     const wRAC = { "n": "RACULKA", "la": 51.932917, "ln": 15.549861 };
-    const wWAZ = { "n": "STASZICA (Wazów)", "la": 51.945306, "ln": 15.520389 };
-    const wCEN = { "n": "ZG CENTRUM", "la": 51.943139, "ln": 15.507972 };
-    const wSOB = { "n": "TRASA PÓŁNOCNA (Sobk.)", "la": 51.961306, "ln": 15.498500 };
-    const wSUL = { "n": "SULECHÓW PCK", "la": 52.083278, "ln": 15.626389 };
+    const wWAZ = { "n": "STASZICA (Wazów)", "la": 51.946250, "ln": 15.519667 };
+    const wCEN = { "n": "ZG CENTRUM", "la": 51.942917, "ln": 15.507750 };
+    const wSOB = { "n": "TRASA PÓŁNOCNA (Sobk.)", "la": 51.961472, "ln": 15.499083 };
+    const wSUL = { "n": "SULECHÓW PCK", "la": 52.083333, "ln": 15.626194 };
     const wB1 = { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 };
     const wB2 = { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 };
 
-    // --- SEKRETY TRASY POWROTNEJ (drugie współrzędne) ---
-    const rB2 = { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 };
-    const rB1 = { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 };
-    const rSUL = { "n": "SULECHÓW PCK", "la": 52.083333, "ln": 15.626194 };
-    const rSOB = { "n": "TRASA PÓŁNOCNA (Sobk.)", "la": 51.961472, "ln": 15.499083 };
-    const rCEN = { "n": "ZG CENTRUM", "la": 51.942917, "ln": 15.507750 };
-    const rWAZ = { "n": "STASZICA (Wazów)", "la": 51.946250, "ln": 15.519667 };
-    const rRAC = { "n": "RACULKA", "la": 51.932917, "ln": 15.549861 };
-
     const locCRS = { "n": "PARKING CRS", "la": 51.956111, "ln": 15.528250 };
 
-    // HARMONOGRAMY WYJAZDÓW (DO PRACY)
     const h0600 = [{...wRAC, t:"04:47"}, {...wWAZ, t:"04:55"}, {...wCEN, t:"04:58"}, {...wSOB, t:"05:05"}, {...wSUL, t:"05:25"}, {...wB1, t:"---"}, {...wB2, t:"06:00"}];
     const h1000 = [{...wRAC, t:"08:47"}, {...wWAZ, t:"08:55"}, {...wCEN, t:"08:58"}, {...wSOB, t:"09:05"}, {...wSUL, t:"09:25"}, {...wB1, t:"---"}, {...wB2, t:"10:00"}];
     const h1200 = [{...wRAC, t:"10:40"}, {...wWAZ, t:"10:50"}, {...wCEN, t:"10:53"}, {...wSOB, t:"11:00"}, {...wSUL, t:"11:25"}, {...wB1, t:"---"}, {...wB2, t:"12:00"}];
@@ -121,8 +111,7 @@
     const h1600 = [{...wRAC, t:"14:35"}, {...wWAZ, t:"14:45"}, {...wCEN, t:"14:48"}, {...wSOB, t:"15:00"}, {...wSUL, t:"15:25"}, {...wB1, t:"---"}, {...wB2, t:"16:00"}];
     const h1800 = [{...wRAC, t:"16:35"}, {...wWAZ, t:"16:45"}, {...wCEN, t:"16:48"}, {...wSOB, t:"17:00"}, {...wSUL, t:"17:25"}, {...wB1, t:"---"}, {...wB2, t:"18:00"}];
 
-    // FUNKCJA TWORZĄCA POWRÓT (Z NOWYMI WSPÓŁRZĘDNYMI)
-    function createReturn(time) { return [{...rB2, n:"POWRÓT: "+time, t:time}, {...rB1, t:"---"}, rSUL, rSOB, rCEN, rWAZ, rRAC]; }
+    function createReturn(time) { return [{...wB2, n:"POWRÓT: "+time, t:time}, {...wB1, t:"---"}, wSUL, wSOB, wCEN, wWAZ, wRAC]; }
 
     var schedules = {
         "06:00": h0600, "10:00": h1000, "12:00": h1200, "14:00": h1400, "16:00": h1600, "18:00": h1800,
@@ -130,16 +119,55 @@
         "16:15": createReturn("16:15"), "18:15": createReturn("18:15"), "20:15": createReturn("20:15"), "22:15": createReturn("22:15")
     };
 
-    var curr = "06:00", idx = 0, map, ds, dr, userPos, liveDelay = 0, userMarker, isMuted = false, lastApiCall = 0, currentKmh = 0, specialTarget = null, isFirstCalc = true;
+    var curr = "06:00", idx = 0, map, ds, dr, userPos, liveDelay = 0, userMarker, isMuted = false, lastApiCall = 0, currentKmh = 0, specialTarget = null, isFirstCalc = true, currentManeuverPoint = null;
 
     function forceFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); }
     function adjustFontSize() { const container = document.getElementById('stop-name-container'); const text = document.getElementById('stop-name'); let fontSize = 40; text.style.fontSize = fontSize + "px"; while (text.offsetWidth < container.offsetWidth - 20 && fontSize < 60) { fontSize++; text.style.fontSize = fontSize + "px"; } while (text.offsetWidth > container.offsetWidth - 10 && fontSize > 10) { fontSize--; text.style.fontSize = fontSize + "px"; } }
     
     function startApp() { if(typeof google === 'undefined') return; autoSelectKurs(); document.getElementById('splash').style.display = 'none'; document.getElementById('exit-btn').style.display = 'flex'; document.getElementById('mute-btn').style.display = 'flex'; renderNav(); setTimeout(() => { scrollBarsToUpcoming(); adjustFontSize(); }, 400); initMap(); initGPS(); setInterval(calc, 60000); setInterval(refresh, 1000); }
 
-    function initGPS() { if (navigator.geolocation) { navigator.geolocation.watchPosition(p => { userPos = { lat: p.coords.latitude, lng: p.coords.longitude }; currentKmh = (p.coords.speed && p.coords.speed > 0) ? Math.round(p.coords.speed * 3.6) : 0; document.getElementById('speed-val').innerText = currentKmh; if (map) { map.panTo(userPos); if (p.coords.heading !== null) map.setHeading(p.coords.heading); map.setTilt(45); const navArrow = { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: "#1a73e8", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, rotation: p.coords.heading || 0 }; if (!userMarker) userMarker = new google.maps.Marker({ position: userPos, map: map, icon: navArrow, flat: true }); else { userMarker.setPosition(userPos); userMarker.setIcon(navArrow); } } if (isFirstCalc) { calc(); isFirstCalc = false; } checkAutoArrival(); }, null, { enableHighAccuracy: true }); } }
+    function initGPS() { 
+        if (navigator.geolocation) { 
+            navigator.geolocation.watchPosition(p => { 
+                userPos = { lat: p.coords.latitude, lng: p.coords.longitude }; 
+                currentKmh = (p.coords.speed && p.coords.speed > 0) ? Math.round(p.coords.speed * 3.6) : 0; 
+                document.getElementById('speed-val').innerText = currentKmh; 
+                
+                if (map) { 
+                    map.panTo(userPos); 
+                    if (p.coords.heading !== null) map.setHeading(p.coords.heading); 
+                    map.setTilt(45); 
 
-    function openFullGoogleMaps() { if (!userPos) return; let dest = specialTarget ? specialTarget.la + "," + specialTarget.ln : schedules[curr][idx].la + "," + schedules[curr][idx].ln; let url = `http://googleusercontent.com/maps.google.com/3{userPos.lat},${userPos.lng}&destination=${dest}&travelmode=driving`; window.open(url, "_blank"); }
+                    // LOGIKA INTELIGENTNEGO ZOOMU
+                    let targetZoom = 19;
+                    if (currentKmh > 80) targetZoom = 15;
+                    else if (currentKmh > 50) targetZoom = 17;
+
+                    // PRZYBLIŻENIE PRZY MANEWRZE / PRZYSTANKU
+                    if (currentManeuverPoint) {
+                        let distToMan = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), currentManeuverPoint);
+                        if (distToMan < 250) targetZoom = 19; 
+                    }
+
+                    if (map.getZoom() !== targetZoom) map.setZoom(targetZoom);
+
+                    const navArrow = { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: "#1a73e8", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, rotation: p.coords.heading || 0 }; 
+                    if (!userMarker) userMarker = new google.maps.Marker({ position: userPos, map: map, icon: navArrow, flat: true }); 
+                    else { userMarker.setPosition(userPos); userMarker.setIcon(navArrow); } 
+                } 
+                if (isFirstCalc) { calc(); isFirstCalc = false; } 
+                checkAutoArrival(); 
+            }, null, { enableHighAccuracy: true }); 
+        } 
+    }
+
+    function openFullGoogleMaps() {
+        if (!userPos) return;
+        let target = specialTarget ? specialTarget : schedules[curr][idx];
+        let dest = target.la + "," + target.ln;
+        let url = `https://www.google.com/maps/dir/?api=1&origin=LAT,LNG&destination=LAT,LNG&travelmode=driving{userPos.lat},${userPos.lng}&destination=${dest}&travelmode=driving`;
+        window.open(url, "_blank");
+    }
 
     function checkAutoArrival() { 
         if(!userPos) return; 
@@ -154,13 +182,30 @@
 
     function triggerNextKurs() { if (curr.endsWith(":15")) { specialTarget = locCRS; } else { autoSelectKurs(); } renderNav(); calc(); refresh(); scrollBarsToUpcoming(); }
 
-    function initMap() { const navStyle = [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]; map = new google.maps.Map(document.getElementById("map"), { center: {lat: 51.93, lng: 15.50}, zoom: 19, tilt: 45, heading: 0, mapId: '404d56c3d3985c59c43ef386', disableDefaultUI: true, styles: navStyle, disableDoubleClickZoom: true }); map.addListener('dblclick', openFullGoogleMaps); new google.maps.TrafficLayer().setMap(map); ds = new google.maps.DirectionsService(); dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true, preserveViewport: true }); }
+    function initMap() { 
+        const navStyle = [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]; 
+        map = new google.maps.Map(document.getElementById("map"), { 
+            center: {lat: 51.93, lng: 15.50}, zoom: 19, tilt: 45, heading: 0, 
+            mapId: '404d56c3d3985c59c43ef386', disableDefaultUI: true, styles: navStyle, disableDoubleClickZoom: true 
+        }); 
+        map.addListener('dblclick', openFullGoogleMaps); 
+        new google.maps.TrafficLayer().setMap(map); 
+        ds = new google.maps.DirectionsService(); 
+        dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true, preserveViewport: true }); 
+    }
 
     function calc() {
-        if(!userPos || !ds) return; lastApiCall = Date.now();
+        if(!userPos || !ds) return;
         let destination = specialTarget ? {lat: specialTarget.la, lng: specialTarget.ln} : {lat: schedules[curr][idx].la, lng: schedules[curr][idx].ln};
         ds.route({ origin: userPos, destination: destination, travelMode: google.maps.TravelMode.DRIVING }, (res, stat) => {
-            if(stat === 'OK') { dr.setDirections(res); liveDelay = Math.round((res.routes[0].legs[0].duration.value / 60) * 1.15); }
+            if(stat === 'OK') { 
+                dr.setDirections(res); 
+                liveDelay = Math.round((res.routes[0].legs[0].duration.value / 60) * 1.15); 
+                // POBIERANIE PUNKTU NASTĘPNEGO MANEWRU DO ZOOMU
+                if (res.routes[0].legs[0].steps.length > 0) {
+                    currentManeuverPoint = res.routes[0].legs[0].steps[0].end_location;
+                }
+            }
         });
     }
 
