@@ -18,8 +18,8 @@
         #splash img { width: 180px; height: auto; margin-bottom: 50px; border-radius: 20px; }
         .btn-start { background: transparent; color: var(--blue); border: 3px solid var(--blue); padding: 20px 80px; border-radius: 50px; font-size: 1.8rem; font-weight: 900; cursor: pointer; }
 
-        .btn-side { position: absolute; right: 15px; width: 44px; height: 44px; border: 2px solid white; border-radius: 50%; font-size: 24px; font-weight: bold; display: none; align-items: center; justify-content: center; z-index: 1000; cursor: pointer; }
-        #exit-btn { top: 15px; background: var(--red); }
+        /* PRZYCISK ODŚWIEŻANIA W PRAWYM GÓRNYM ROGU */
+        .btn-side { position: absolute; right: 15px; top: 15px; width: 48px; height: 48px; border: 2px solid white; border-radius: 50%; font-size: 28px; font-weight: bold; display: none; align-items: center; justify-content: center; z-index: 1000; cursor: pointer; background: var(--blue); color: white; }
 
         .nav-label { font-size: 0.8rem; color: var(--blue); font-weight: 900; margin: 3px 0; text-transform: uppercase; }
         .nav-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; flex-shrink: 0; margin-right: 60px; scroll-behavior: smooth; }
@@ -39,7 +39,7 @@
 
         #gps-msg { font-weight: bold; font-size: 0.9rem; height: 1.2rem; margin-top: 5px; text-align: center; }
 
-        /* NOWY PANEL: ZEGAR (3/4) I PRĘDKOŚĆ (1/4) */
+        /* PANEL: ZEGAR (3/4) I PRĘDKOŚĆ (1/4) */
         #info-panel { display: flex; gap: 8px; height: 60px; margin-bottom: 8px; flex-shrink: 0; }
         #clock-box { flex: 3; background: var(--card); border: 2px solid var(--blue); border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: #fff; letter-spacing: 2px; }
         #speed-box { flex: 1; background: var(--card); border: 2px solid var(--gold); border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -62,7 +62,7 @@
         <button class="btn-start" onclick="startApp()">START</button>
     </div>
 
-    <button id="exit-btn" class="btn-side" onclick="exitApp()">×</button>
+    <button id="refresh-btn" class="btn-side" onclick="refreshApp()">↻</button>
 
     <div class="nav-label">🔵 DO PRACY (apt):</div>
     <div id="work-bar" class="nav-row"></div>
@@ -140,14 +140,15 @@
     function forceFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{}); }
     function adjustFontSize() { const container = document.getElementById('stop-name-container'); const text = document.getElementById('stop-name'); let fontSize = 40; text.style.fontSize = fontSize + "px"; while (text.offsetWidth < container.offsetWidth - 20 && fontSize < 60) { fontSize++; text.style.fontSize = fontSize + "px"; } while (text.offsetWidth > container.offsetWidth - 10 && fontSize > 10) { fontSize--; text.style.fontSize = fontSize + "px"; } }
     
-    // AKTUALIZACJA ZEGARA
     function updateClock() {
         const now = new Date();
         const timeStr = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0') + ":" + now.getSeconds().toString().padStart(2, '0');
         document.getElementById('clock-box').innerText = timeStr;
     }
 
-    function startApp() { if(typeof google === 'undefined') return; autoSelectKursAndStop(); document.getElementById('splash').style.display = 'none'; document.getElementById('exit-btn').style.display = 'flex'; renderNav(); initMap(); initGPS(); setInterval(calc, 60000); setInterval(refresh, 1000); setInterval(updateClock, 1000); }
+    function refreshApp() { location.reload(); }
+
+    function startApp() { if(typeof google === 'undefined') return; autoSelectKursAndStop(); document.getElementById('splash').style.display = 'none'; document.getElementById('refresh-btn').style.display = 'flex'; renderNav(); initMap(); initGPS(); setInterval(calc, 60000); setInterval(refresh, 1000); setInterval(updateClock, 1000); }
 
     function initGPS() { 
         if (navigator.geolocation) { 
@@ -158,7 +159,10 @@
                 if (map) { 
                     map.panTo(userPos); if (p.coords.heading !== null) map.setHeading(p.coords.heading); map.setTilt(45); 
                     let targetZoom = 19; if (currentKmh > 80) targetZoom = 15; else if (currentKmh > 50) targetZoom = 17;
-                    if (currentManeuverPoint) { let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), currentManeuverPoint); if (d < 250) targetZoom = 19; }
+                    if (currentManeuverPoint) {
+                        let distToMan = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), currentManeuverPoint);
+                        if (distToMan < 250) targetZoom = 19; 
+                    }
                     if (map.getZoom() !== targetZoom) map.setZoom(targetZoom);
                     const navArrow = { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: "#1a73e8", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, rotation: p.coords.heading || 0 }; 
                     if (!userMarker) userMarker = new google.maps.Marker({ position: userPos, map: map, icon: navArrow, flat: true }); 
@@ -247,7 +251,6 @@
         }
     }
 
-    function exitApp() { if(confirm("Zakończyć?")) location.reload(); }
     function move(d) { if(schedules[curr] && schedules[curr][idx + d]) { idx += d; specialTarget = null; calc(); } }
     function handleStep() { if (specialTarget) { specialTarget = null; autoSelectKursAndStop(); renderNav(); calc(); } else if (idx >= (schedules[curr]?.length || 0) - 1) triggerNextKurs(); else { idx++; calc(); } }
 </script>
