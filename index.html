@@ -101,7 +101,6 @@
     </div>
 
 <script>
-    // PRECYZYJNE WSPÓŁRZĘDNE (apt)
     const wRAC = { "la": 51.932917, "ln": 15.549861, "n": "RACULKA" };
     const wWAZ = { "la": 51.946250, "ln": 15.519667, "n": "STASZICA (Wazów)" };
     const wCEN = { "la": 51.942917, "ln": 15.507750, "n": "ZG CENTRUM" };
@@ -118,7 +117,7 @@
     const h1600 = [{...wRAC, t:"14:35"}, {...wWAZ, t:"14:45"}, {...wCEN, t:"14:48"}, {...wSOB, t:"15:00"}, {...wSUL, t:"15:25"}, {...wB1, t:"---"}, {...wB2, t:"16:00"}];
     const h1800 = [{...wRAC, t:"16:35"}, {...wWAZ, t:"16:45"}, {...wCEN, t:"16:48"}, {...wSOB, t:"17:00"}, {...wSUL, t:"17:25"}, {...wB1, t:"---"}, {...wB2, t:"18:00"}];
 
-    function createReturn(time) { return [{...wB2, n:"POWRÓT: "+time, t:time}, {...wB1, t:"---"}, wSUL, wSOB, wCEN, wWAZ, wRAC]; }
+    function createReturn(time) { return [{...wB2, n:"POWRÓT: "+time, t:time}, {...wB1, t:"---"}, {...wSUL, n:"SULECHÓW PCK"}, {...wSOB, n:"TRASA PÓŁNOCNA (Sobk.)"}, {...wCEN, n:"ZG CENTRUM"}, {...wWAZ, n:"STASZICA (Wazów)"}, {...wRAC, n:"RACULKA"}]; }
 
     var schedules = {
         "06:00": h0600, "10:00": h1000, "12:00": h1200, "14:00": h1400, "16:00": h1600, "18:00": h1800,
@@ -148,10 +147,33 @@
         window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&waypoints=${waypoints.join('|')}&travelmode=driving`, "_blank");
     }
 
+    // --- LOGIKA INTELIGENTNEGO WEKTORA ---
     function checkAutoArrival() { 
-        if(!userPos) return; let target = specialTarget ? specialTarget : schedules[curr][idx];
-        let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(target.la, target.ln)); 
-        if (d < 75) { if (specialTarget) { specialTarget = null; autoSelectKursAndStop(); renderNav(); calc(); } else if (idx < schedules[curr].length - 1) { idx++; calc(); } else { triggerNextKurs(); } } 
+        if(!userPos) return; 
+        let target = specialTarget ? specialTarget : schedules[curr][idx];
+        let dToCurrent = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(target.la, target.ln)); 
+        
+        let shouldSkip = false;
+
+        // 1. Standardowy promień 75m
+        if (dToCurrent < 75) shouldSkip = true;
+
+        // 2. Logika oddalania się w stronę następnego
+        if (!specialTarget && idx < schedules[curr].length - 1) {
+            let nextTarget = schedules[curr][idx + 1];
+            let dToNext = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(nextTarget.la, nextTarget.ln));
+            
+            // Jeśli jestem dalej niż 200m od obecnego, a do następnego mam już bliżej niż do obecnego -> SKOCZ
+            if (dToCurrent > 200 && dToNext < dToCurrent) {
+                shouldSkip = true;
+            }
+        }
+
+        if (shouldSkip) { 
+            if (specialTarget) { specialTarget = null; autoSelectKursAndStop(); renderNav(); calc(); }
+            else if (idx < schedules[curr].length - 1) { idx++; calc(); } 
+            else { triggerNextKurs(); }
+        } 
     }
 
     function triggerNextKurs() { if (curr.endsWith(":15")) { specialTarget = locCRS; } else { autoSelectKursAndStop(); } renderNav(); calc(); }
@@ -179,15 +201,11 @@
         } else { tEl.innerText = "--"; gpsMsgEl.innerText = ""; }
     }
 
-    // --- PRZESUWANIE PASKÓW: AKTYWNY DO LEWEJ KRAWĘDZI ---
     function scrollBarsToActive() {
         const rows = [document.getElementById('work-bar'), document.getElementById('return-bar')];
         rows.forEach(row => {
             const activeBtn = row.querySelector('.btn-s.active');
-            if (activeBtn) {
-                // Przewija tak, by przycisk był na samym początku (0 od lewej strony paska)
-                row.scrollTo({ left: activeBtn.offsetLeft - 10, behavior: 'smooth' });
-            }
+            if (activeBtn) { row.scrollTo({ left: activeBtn.offsetLeft - 10, behavior: 'smooth' }); }
         });
     }
 
@@ -198,28 +216,23 @@
             b.onclick = (e) => { e.stopPropagation(); curr = k; idx = 0; specialTarget = null; renderNav(); calc(); }; 
             if (k.endsWith(":15")) r.appendChild(b); else w.appendChild(b); 
         }
-        setTimeout(scrollBarsToActive, 150); // Małe opóźnienie dla płynności po renderowaniu
+        setTimeout(scrollBarsToActive, 150);
     }
 
-    // --- WYBÓR KURSU BEZ ZASADY 90 MINUT (NAJBLIŻSZY LUB TRWAJĄCY) ---
     function autoSelectKursAndStop() {
         const now = new Date(), minNow = now.getHours() * 60 + now.getMinutes(), keys = Object.keys(schedules).sort();
         let selectedKurs = keys[0];
-        // Znajdź pierwszy kurs, którego czas startu jest w przyszłości LUB ten, który zaczął się najpóźniej
         for (let k of keys) {
             const [h, m] = k.split(':').map(Number);
             const kursTime = h * 60 + m;
-            if (minNow < kursTime + 30) { // Zostawiamy 30 min marginesu na start trwającego kursu
-                selectedKurs = k;
-                break;
-            }
+            if (minNow < kursTime + 60) { selectedKurs = k; break; }
         }
         curr = selectedKurs; idx = 0;
         for (let i = 0; i < schedules[curr].length; i++) {
             let stopTime = schedules[curr][i].t;
             if (stopTime && stopTime !== "---") {
                 const [sh, sm] = stopTime.split(':').map(Number);
-                if ((sh * 60 + sm) > minNow) { idx = i; break; }
+                if ((sh * 60 + sm + 30) > minNow) { idx = i; break; }
             }
         }
     }
