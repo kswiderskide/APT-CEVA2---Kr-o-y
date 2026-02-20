@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>APT - CEVA 2</title>
+    <title>APT</title>
 
     <link rel="icon" type="image/png" href="APT.png">
     <link rel="apple-touch-icon" href="APT.png">
@@ -66,14 +66,16 @@
         #nav-dist { font-size: 1.5rem; font-weight: 900; color: #222; margin-top: -2px; }
 
         .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 65px; margin-bottom: 85px; flex-shrink: 0; }
-        .btn-nav { background: var(--card); color: var(--blue); border: 2px solid var(--blue); border-radius: 12px; font-size: 1.1rem; font-weight: bold; text-transform: uppercase; }
+        .btn-nav { background: var(--card); color: var(--blue); border: 2px solid var(--blue); border-radius: 12px; font-size: 1.1rem; font-weight: bold; text-transform: uppercase; transition: 0.3s; }
         .btn-nav:active { background: var(--blue); color: black; }
+        
+        .btn-finish { background: var(--red) !important; color: white !important; border-color: white !important; box-shadow: 0 0 15px var(--red); }
     </style>
 </head>
 <body onclick="forceFullScreen()">
 
     <div id="splash">
-        <img src="APT.png" alt="Logo">
+        <img src="APT.png" alt="APT">
         <button class="btn-start" onclick="startApp()">START</button>
     </div>
 
@@ -96,7 +98,7 @@
                 <div id="eta-timer">--</div>
             </div>
         </div>
-        <div id="gps-msg"></div>
+        <div id="gps-msg" style="font-weight: bold; font-size: 0.9rem; height: 1.2rem; margin-top: 5px;"></div>
     </div>
 
     <div id="instrument-row">
@@ -104,7 +106,7 @@
         <div id="clock-panel"><span id="clock-val">00:00:00</span></div>
     </div>
 
-    <div id="map-container" onclick="openFullGoogleMaps()">
+    <div id="map-container">
         <div id="nav-overlay">
             <svg id="nav-icon-svg" viewBox="0 0 24 24"><path d=""/></svg>
             <div id="nav-dist">--- m</div>
@@ -114,48 +116,50 @@
 
     <div class="footer">
         <button class="btn-nav" onclick="move(-1)">Poprzedni</button>
-        <button class="btn-nav" onclick="handleStep()">Następny</button>
+        <button id="next-btn" class="btn-nav" onclick="handleStep()">Następny</button>
     </div>
 
 <script>
-    const aptWorkPoints = [
+    // PRZYSTANKI DO PRACY (KIERUNEK SULECHÓW)
+    const aptW = [
         { "n": "RACULKA", "la": 51.932917, "ln": 15.549861 },
         { "n": "STASZICA", "la": 51.946250, "ln": 15.519667 },
         { "n": "ZG CENTRUM", "la": 51.942917, "ln": 15.507750 },
-        { "n": "TRASA PÓŁNOCNA", "la": 51.961472, "ln": 15.499083 },
+        { "n": "TRASA PÓŁNOCNA", "la": 51.96135, "ln": 15.49885 },
         { "n": "SULECHÓW PCK", "la": 52.083333, "ln": 15.626194 },
         { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 },
         { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 }
     ];
 
-    const aptReturnPoints = [
+    // PRZYSTANKI POWROTNE (KIERUNEK CENTRUM/RACULKA)
+    const aptR = [
         { "n": "BRAMA 2", "la": 52.094611, "ln": 15.658056 },
         { "n": "BRAMA 1", "la": 52.090972, "ln": 15.649444 },
         { "n": "SULECHÓW PCK", "la": 52.083333, "ln": 15.626194 },
-        { "n": "TRASA PÓŁNOCNA", "la": 51.961472, "ln": 15.499083 },
+        { "n": "TRASA PÓŁNOCNA", "la": 51.96160, "ln": 15.49930 },
         { "n": "ZG CENTRUM", "la": 51.942917, "ln": 15.507750 },
         { "n": "STASZICA", "la": 51.946250, "ln": 15.519667 },
         { "n": "RACULKA", "la": 51.932917, "ln": 15.549861 }
     ];
 
     var schedules = {
-        "04:47": aptWorkPoints.map((s,i) => ({...s, t: ["04:47","04:55","04:58","05:05","05:25","---","---"][i]})),
-        "08:47": aptWorkPoints.map((s,i) => ({...s, t: ["08:47","08:55","08:58","09:05","09:25","---","---"][i]})),
-        "10:40": aptWorkPoints.map((s,i) => ({...s, t: ["10:40","10:50","10:53","11:00","11:25","---","---"][i]})),
-        "12:35": aptWorkPoints.map((s,i) => ({...s, t: ["12:35","12:45","12:48","13:00","13:25","---","---"][i]})),
-        "14:35": aptWorkPoints.map((s,i) => ({...s, t: ["14:35","14:45","14:48","15:00","15:25","---","---"][i]})),
-        "16:35": aptWorkPoints.map((s,i) => ({...s, t: ["16:35","16:45","16:48","17:00","17:25","---","---"][i]})),
-        "10:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "10:15" : "---"})),
-        "12:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "12:15" : "---"})),
-        "14:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "14:15" : "---"})),
-        "16:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "16:15" : "---"})),
-        "18:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "18:15" : "---"})),
-        "20:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "20:15" : "---"})),
-        "22:15": aptReturnPoints.map((s,i) => ({...s, t: i===0 ? "22:15" : "---"}))
+        "04:47": aptW.map((s,i) => ({...s, t: ["04:47","04:55","04:58","05:05","05:25","---","---"][i]})),
+        "08:47": aptW.map((s,i) => ({...s, t: ["08:47","08:55","08:58","09:05","09:25","---","---"][i]})),
+        "10:40": aptW.map((s,i) => ({...s, t: ["10:40","10:50","10:53","11:00","11:25","---","---"][i]})),
+        "12:35": aptW.map((s,i) => ({...s, t: ["12:35","12:45","12:48","13:00","13:25","---","---"][i]})),
+        "14:35": aptW.map((s,i) => ({...s, t: ["14:35","14:45","14:48","15:00","15:25","---","---"][i]})),
+        "16:35": aptW.map((s,i) => ({...s, t: ["16:35","16:45","16:48","17:00","17:25","---","---"][i]})),
+        "10:15": aptR.map((s,i) => ({...s, t: i===0 ? "10:15" : "---"})),
+        "12:15": aptR.map((s,i) => ({...s, t: i===0 ? "12:15" : "---"})),
+        "14:15": aptR.map((s,i) => ({...s, t: i===0 ? "14:15" : "---"})),
+        "16:15": aptR.map((s,i) => ({...s, t: i===0 ? "16:15" : "---"})),
+        "18:15": aptR.map((s,i) => ({...s, t: i===0 ? "18:15" : "---"})),
+        "20:15": aptR.map((s,i) => ({...s, t: i===0 ? "20:15" : "---"})),
+        "22:15": aptR.map((s,i) => ({...s, t: i===0 ? "22:15" : "---"}))
     };
 
     var labels = { "04:47": "6:00", "08:47": "10:00", "10:15": "10:15", "10:40": "12:00", "12:15": "12:15", "12:35": "14:00", "14:15": "14:15", "14:35": "16:00", "16:15": "16:15", "16:35": "18:00", "18:15": "18:15", "20:15": "20:15", "22:15": "22:15" };
-    var curr = "04:47", idx = 0, map, ds, dr, userPos, liveDelay = 0, userMarker, wakeLock = null, isMuted = false, currentNextManeuverLoc = null, lastApiCall = 0, catchupDone = false, currentKmh = 0, atStopIdx = -1, alarmPlayedForIdx = -1, audioCtx = null;
+    var curr = "04:47", idx = 0, map, ds, dr, userPos, liveDelay = 0, userMarker, wakeLock = null, isMuted = false, currentNextManeuverLoc = null, lastApiCall = 0, catchupDone = false, currentKmh = 0, atStopIdx = -1, alarmPlayedForIdx = -1, audioCtx = null, lastTap = 0;
 
     const iconPaths = { "straight": "M11,6.5V21H13V6.5L16.5,10L17.92,8.58L12,2.66L6.08,8.58L7.5,10L11,6.5Z", "turn-right": "M17,11.5L17,5L15,5L15,10L7,10L7,8L3,12L7,16L7,14L15,14C16.1,14 17,13.1 17,12V11.5Z", "turn-left": "M7,11.5L7,5L9,5L9,10L17,10L17,8L21,12L17,16L17,14L9,14C7.9,14 7,13.1 7,12V11.5Z", "roundabout": "M12,2C10.12,2 8.36,2.6 6.9,3.61L8.5,5.21C9.5,4.45 10.7,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20C7.59,20 4,16.41 4,12C4,10.7 4.45,9.5 5.21,8.5L3.61,6.9C2.6,8.36 2,10.12 2,12C2,17.5 6.5,22 12,22C17.5,22 22,17.5 22,12C22,6.5 17.5,2 12,2M12,7L7,12H11V16H13V12H17L12,7Z" };
 
@@ -170,29 +174,24 @@
         osc.start(); setTimeout(() => osc.stop(), dur);
     }
 
-    function scrollBarsToUpcoming() {
-        const rows = [document.getElementById('work-bar'), document.getElementById('return-bar')];
-        rows.forEach(row => { const act = row.querySelector('.active'); if(act) row.scrollTo({left: act.offsetLeft - 20, behavior: 'smooth'}); });
-    }
-
     function adjustFontSize() {
         const container = document.getElementById('stop-name-container');
         const text = document.getElementById('stop-name');
-        let fontSize = 40;
-        text.style.fontSize = fontSize + "px";
-        // OGRANICZENIE DO 65px DLA ESTETYKI KRÓTKICH NAZW
-        while (text.offsetWidth < container.offsetWidth - 20 && fontSize < 65) { fontSize++; text.style.fontSize = fontSize + "px"; }
+        let fontSize = 40; text.style.fontSize = fontSize + "px";
+        // LIMIT USTAWIONY NA 60 PX
+        while (text.offsetWidth < container.offsetWidth - 20 && fontSize < 60) { fontSize++; text.style.fontSize = fontSize + "px"; }
         while (text.offsetWidth > container.offsetWidth - 10 && fontSize > 10) { fontSize--; text.style.fontSize = fontSize + "px"; }
     }
 
     function startApp() {
-        if(typeof google === 'undefined') { alert("Błąd Map Google!"); return; }
+        if(typeof google === 'undefined') { alert("Błąd Map!"); return; }
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         autoSelectKurs(); requestWakeLock();
         document.getElementById('splash').style.display = 'none';
         document.getElementById('exit-btn').style.display = 'flex';
         document.getElementById('mute-btn').style.display = 'flex';
         document.getElementById('nav-overlay').style.display = 'flex';
+        document.getElementById('map-container').addEventListener('touchstart', (e) => { let now = Date.now(); if (now - lastTap < 350) openFullGoogleMaps(); lastTap = now; });
         renderNav(); setTimeout(() => { scrollBarsToUpcoming(); adjustFontSize(); }, 400); 
         initMap(); initGPS();
         calc(); setInterval(calc, 60000); setInterval(refresh, 1000);
@@ -205,26 +204,17 @@
                 userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
                 currentKmh = (p.coords.speed && p.coords.speed > 0) ? Math.round(p.coords.speed * 3.6) : 0;
                 document.getElementById('speed-val').innerText = currentKmh;
-                
                 if (map) { 
                     map.panTo(userPos);
                     if (p.coords.heading !== null) map.setHeading(p.coords.heading);
-                    
-                    const navArrow = {
-                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        scale: 6, fillColor: "#1a73e8", fillOpacity: 1, strokeColor: "white", strokeWeight: 2,
-                        rotation: p.coords.heading || 0
-                    };
-
+                    const navArrow = { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 6, fillColor: "#1a73e8", fillOpacity: 1, strokeColor: "white", strokeWeight: 2, rotation: p.coords.heading || 0 };
                     if (!userMarker) userMarker = new google.maps.Marker({ position: userPos, map: map, icon: navArrow, flat: true });
                     else { userMarker.setPosition(userPos); userMarker.setIcon(navArrow); }
                 }
-
                 if (currentNextManeuverLoc) {
                     let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), currentNextManeuverLoc);
                     document.getElementById('nav-dist').innerText = d > 1000 ? (d/1000).toFixed(1) + " km" : Math.round(d) + " m";
-                    if (d < 150) { if (map.getZoom() < 20) map.setZoom(20); } 
-                    else if (d > 250) { if (map.getZoom() > 18) map.setZoom(18); }
+                    if (d < 150) { if (map.getZoom() < 20) map.setZoom(20); } else if (d > 250) { if (map.getZoom() > 18) map.setZoom(18); }
                     if (d < 35 && (Date.now() - lastApiCall > 15000)) calc();
                 }
                 if (!catchupDone) { performCatchup(); catchupDone = true; }
@@ -235,22 +225,20 @@
 
     function openFullGoogleMaps() {
         if (!userPos) return;
-        let stops = schedules[curr];
-        let dest = stops[stops.length-1].la + "," + stops[stops.length-1].ln;
-        let waypoints = stops.slice(idx, -1).map(s => s.la + "," + s.ln).join('|');
-        let url = `https://www.google.com/maps/dir/?api=1&origin=${userPos.lat},${userPos.lng}&destination=${dest}&waypoints=${encodeURIComponent(waypoints)}&travelmode=driving`;
+        let dest = schedules[curr][idx].la + "," + schedules[curr][idx].ln;
+        let url = `https://www.google.com/maps/dir/?api=1&origin=${userPos.lat},${userPos.lng}&destination=${dest}&travelmode=driving`;
         window.open(url, "_blank");
     }
 
-    function performCatchup() { let stops = schedules[curr]; for (let i = 0; i < stops.length - 1; i++) { let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(stops[i].la, stops[i].ln)); if (d < 500) { idx = Math.min(i + 1, stops.length - 1); calc(); refresh(); break; } } }
-    function checkAutoArrival() { if(!userPos) return; let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(schedules[curr][idx].la, schedules[curr][idx].ln)); if (d < 75 && idx < schedules[curr].length - 1) { atStopIdx = idx; idx++; calc(); refresh(); } }
+    function checkAutoArrival() { 
+        if(!userPos) return; 
+        let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(schedules[curr][idx].la, schedules[curr][idx].ln)); 
+        if (d < 75 && idx < schedules[curr].length - 1) { atStopIdx = idx; idx++; calc(); refresh(); } 
+    }
 
     function initMap() {
         const navStyle = [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }];
-        map = new google.maps.Map(document.getElementById("map"), { 
-            center: {lat: 51.93, lng: 15.50}, zoom: 18, tilt: 45, heading: 0,
-            disableDefaultUI: true, styles: navStyle 
-        });
+        map = new google.maps.Map(document.getElementById("map"), { center: {lat: 51.93, lng: 15.50}, zoom: 18, tilt: 45, heading: 0, disableDefaultUI: true, styles: navStyle });
         new google.maps.TrafficLayer().setMap(map);
         ds = new google.maps.DirectionsService(); dr = new google.maps.DirectionsRenderer({ map: map, suppressMarkers: true, preserveViewport: true });
     }
@@ -273,19 +261,21 @@
     function refresh() {
         let s = schedules[curr][idx];
         const stopNameEl = document.getElementById('stop-name');
-        const timePart = s.t !== "---" ? "(" + s.t + ") " : "";
+        const nextBtn = document.getElementById('next-btn');
+        const timePart = (s.t && s.t !== "---") ? "(" + s.t + ") " : "";
         const newStopText = timePart + s.n;
         if (stopNameEl.innerText !== newStopText) { stopNameEl.innerText = newStopText; adjustFontSize(); }
         
-        let tEl = document.getElementById('timer'); 
-        let etaEl = document.getElementById('eta-timer');
-        let clockPanel = document.getElementById('clock-panel'); 
-        let gpsMsgEl = document.getElementById('gps-msg');
-        
-        etaEl.innerText = liveDelay > 0 ? liveDelay + "m" : "--";
+        if (idx >= (schedules[curr]?.length || 0) - 1) {
+            nextBtn.innerText = "ZAKOŃCZ"; nextBtn.classList.add('btn-finish');
+        } else {
+            nextBtn.innerText = "NASTĘPNY"; nextBtn.classList.remove('btn-finish');
+        }
 
+        let tEl = document.getElementById('timer'); let etaEl = document.getElementById('eta-timer'); let clockPanel = document.getElementById('clock-panel'); let gpsMsgEl = document.getElementById('gps-msg');
+        etaEl.innerText = liveDelay > 0 ? liveDelay + "m" : "--";
         let diff = 0;
-        if(s.t === "---") {
+        if(!s.t || s.t === "---") {
             let n = new Date(); n.setMinutes(n.getMinutes() + liveDelay);
             tEl.innerText = n.getHours() + ":" + (n.getMinutes()<10?'0':'') + n.getMinutes();
             tEl.style.color = "var(--blue)"; gpsMsgEl.innerText = "";
@@ -299,17 +289,21 @@
             gpsMsgEl.style.color = (delta >= 0) ? "var(--gold)" : "var(--red)";
             if (gpsMsgEl.innerText !== statusText) gpsMsgEl.innerText = statusText;
         }
-        clockPanel.classList.remove('alarm-active'); clockPanel.classList.remove('late-warning');
+        clockPanel.classList.remove('alarm-active', 'late-warning');
         if (currentKmh > 10) { atStopIdx = -1; alarmPlayedForIdx = -1; }
-        let isAlarming = false;
         if (atStopIdx !== -1) {
             let stop = schedules[curr][atStopIdx];
             if (stop && stop.t !== "---") {
                 let p = stop.t.split(':'); let depTime = new Date(); depTime.setHours(p[0], p[1], 0);
-                if (new Date() >= depTime && currentKmh < 5) { clockPanel.classList.add('alarm-active'); isAlarming = true; if (alarmPlayedForIdx !== atStopIdx) { playBeep(920, 2000); alarmPlayedForIdx = atStopIdx; } }
+                if (new Date() >= depTime && currentKmh < 5) { clockPanel.classList.add('alarm-active'); if (alarmPlayedForIdx !== atStopIdx) { playBeep(920, 2000); alarmPlayedForIdx = atStopIdx; } }
             }
         }
-        if (!isAlarming && (diff - liveDelay) < 0 && s.t !== "---") { clockPanel.classList.add('late-warning'); }
+        if (!clockPanel.classList.contains('alarm-active') && (diff - liveDelay) < 0 && s.t && s.t !== "---") { clockPanel.classList.add('late-warning'); }
+    }
+
+    function scrollBarsToUpcoming() {
+        const rows = [document.getElementById('work-bar'), document.getElementById('return-bar')];
+        rows.forEach(row => { const act = row.querySelector('.active'); if(act) row.scrollTo({left: act.offsetLeft - 20, behavior: 'smooth'}); });
     }
 
     function renderNav() {
@@ -317,16 +311,19 @@
         w.innerHTML = ""; r.innerHTML = "";
         for(let k in schedules) {
             let b = document.createElement('button'); b.className = 'btn-s' + (k === curr ? ' active' : '');
-            b.innerText = labels[k] || k; b.setAttribute('data-time', k);
-            b.onclick = (e) => { e.stopPropagation(); curr = k; idx = 0; atStopIdx = -1; alarmPlayedForIdx = -1; catchupDone = false; renderNav(); calc(); };
+            b.innerText = labels[k] || k; b.onclick = (e) => { e.stopPropagation(); curr = k; idx = 0; atStopIdx = -1; alarmPlayedForIdx = -1; catchupDone = false; renderNav(); calc(); };
             if (["10:15", "12:15", "14:15", "16:15", "18:15", "20:15", "22:15"].includes(k)) r.appendChild(b); else w.appendChild(b);
         }
     }
 
+    function performCatchup() { let stops = schedules[curr]; for (let i = 0; i < stops.length - 1; i++) { let d = google.maps.geometry.spherical.computeDistanceBetween(new google.maps.LatLng(userPos.lat, userPos.lng), new google.maps.LatLng(stops[i].la, stops[i].ln)); if (d < 500) { idx = Math.min(i + 1, stops.length - 1); calc(); refresh(); break; } } }
     function toggleMute() { isMuted = !isMuted; document.getElementById('mute-btn').innerText = isMuted ? "🔇" : "🔈"; }
     function exitApp() { if(confirm("Zakończyć?")) location.reload(); }
     function move(d) { if(schedules[curr] && schedules[curr][idx + d]) { idx += d; atStopIdx = -1; alarmPlayedForIdx = -1; calc(); } }
-    function handleStep() { if (idx >= (schedules[curr]?.length || 0) - 1) exitApp(); else { idx++; atStopIdx = -1; alarmPlayedForIdx = -1; calc(); } }
+    function handleStep() { 
+        if (idx >= (schedules[curr]?.length || 0) - 1) exitApp(); 
+        else { idx++; atStopIdx = -1; alarmPlayedForIdx = -1; calc(); } 
+    }
     function autoSelectKurs() {
         const now = new Date(); const minNow = now.getHours() * 60 + now.getMinutes();
         const keys = Object.keys(labels).sort(); let selected = keys[0];
