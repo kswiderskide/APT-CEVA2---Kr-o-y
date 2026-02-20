@@ -25,7 +25,7 @@
         .nav-label { font-size: 0.9rem; color: var(--blue); font-weight: 900; margin: 5px 0; text-transform: uppercase; }
         .nav-row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; flex-shrink: 0; margin-right: 75px; scroll-behavior: smooth; }
         .nav-row::-webkit-scrollbar { display: none; }
-        .btn-s { background: var(--card); color: #fff; border: 1px solid #444; padding: 12px 18px; border-radius: 10px; font-weight: bold; font-size: 1rem; min-width: 85px; white-space: nowrap; transition: 0.3s; }
+        .btn-s { background: var(--card); color: #fff; border: 1px solid #444; padding: 12px 18px; border-radius: 10px; font-weight: bold; font-size: 1rem; min-width: 85px; white-space: nowrap; }
         .btn-s.active { background: var(--blue); color: white; border-color: white; box-shadow: 0 0 15px var(--blue); }
 
         .display { background: var(--card); border: 4px solid #334155; border-radius: 30px; padding: 20px; text-align: center; margin-bottom: 12px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
@@ -171,7 +171,7 @@
         let tEl = document.getElementById('timer'); let etaEl = document.getElementById('eta-timer'); etaEl.innerText = liveDelay > 0 ? liveDelay + "m" : "--";
         if(s.t && s.t !== "---") { 
             let p = s.t.split(':'); let tr = new Date(); tr.setHours(p[0], p[1], 0); 
-            let diff = Math.ceil((tr - new Date()) / 60000); if (diff < -90) diff += 1440; 
+            let diff = Math.ceil((tr - new Date()) / 60000); 
             tEl.innerText = diff < 60 && diff > -60 ? diff + " min" : Math.floor(diff/60)+"h "+(Math.abs(diff)%60)+"m";
             tEl.style.color = (diff < 0) ? "var(--red)" : "var(--green)";
             const delta = diff - liveDelay; gpsMsgEl.style.color = (delta >= 0) ? "var(--gold)" : "var(--red)"; 
@@ -179,13 +179,14 @@
         } else { tEl.innerText = "--"; gpsMsgEl.innerText = ""; }
     }
 
-    // --- INTELIGENTNE PRZESUWANIE PASKÓW ---
+    // --- PRZESUWANIE PASKÓW: AKTYWNY DO LEWEJ KRAWĘDZI ---
     function scrollBarsToActive() {
         const rows = [document.getElementById('work-bar'), document.getElementById('return-bar')];
         rows.forEach(row => {
             const activeBtn = row.querySelector('.btn-s.active');
             if (activeBtn) {
-                row.scrollTo({ left: activeBtn.offsetLeft - row.offsetLeft, behavior: 'smooth' });
+                // Przewija tak, by przycisk był na samym początku (0 od lewej strony paska)
+                row.scrollTo({ left: activeBtn.offsetLeft - 10, behavior: 'smooth' });
             }
         });
     }
@@ -197,19 +198,28 @@
             b.onclick = (e) => { e.stopPropagation(); curr = k; idx = 0; specialTarget = null; renderNav(); calc(); }; 
             if (k.endsWith(":15")) r.appendChild(b); else w.appendChild(b); 
         }
-        setTimeout(scrollBarsToActive, 100);
+        setTimeout(scrollBarsToActive, 150); // Małe opóźnienie dla płynności po renderowaniu
     }
 
+    // --- WYBÓR KURSU BEZ ZASADY 90 MINUT (NAJBLIŻSZY LUB TRWAJĄCY) ---
     function autoSelectKursAndStop() {
         const now = new Date(), minNow = now.getHours() * 60 + now.getMinutes(), keys = Object.keys(schedules).sort();
         let selectedKurs = keys[0];
-        for (let k of keys) { const [h, m] = k.split(':').map(Number); if (minNow < (h * 60 + m + 90)) { selectedKurs = k; break; } }
+        // Znajdź pierwszy kurs, którego czas startu jest w przyszłości LUB ten, który zaczął się najpóźniej
+        for (let k of keys) {
+            const [h, m] = k.split(':').map(Number);
+            const kursTime = h * 60 + m;
+            if (minNow < kursTime + 30) { // Zostawiamy 30 min marginesu na start trwającego kursu
+                selectedKurs = k;
+                break;
+            }
+        }
         curr = selectedKurs; idx = 0;
         for (let i = 0; i < schedules[curr].length; i++) {
             let stopTime = schedules[curr][i].t;
             if (stopTime && stopTime !== "---") {
                 const [sh, sm] = stopTime.split(':').map(Number);
-                if ((sh * 60 + sm + 90) > minNow) { idx = i; break; }
+                if ((sh * 60 + sm) > minNow) { idx = i; break; }
             }
         }
     }
