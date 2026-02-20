@@ -178,7 +178,6 @@
         const container = document.getElementById('stop-name-container');
         const text = document.getElementById('stop-name');
         let fontSize = 40; text.style.fontSize = fontSize + "px";
-        // LIMIT USTAWIONY NA 60 PX
         while (text.offsetWidth < container.offsetWidth - 20 && fontSize < 60) { fontSize++; text.style.fontSize = fontSize + "px"; }
         while (text.offsetWidth > container.offsetWidth - 10 && fontSize > 10) { fontSize--; text.style.fontSize = fontSize + "px"; }
     }
@@ -226,7 +225,8 @@
     function openFullGoogleMaps() {
         if (!userPos) return;
         let dest = schedules[curr][idx].la + "," + schedules[curr][idx].ln;
-        let url = `https://www.google.com/maps/dir/?api=1&origin=${userPos.lat},${userPos.lng}&destination=${dest}&travelmode=driving`;
+        // dirflg=h wymusza omijanie autostrad w aplikacji Google Maps
+        let url = `https://www.google.com/maps/dir/?api=1&origin=${userPos.lat},${userPos.lng}&destination=${dest}&travelmode=driving&dirflg=h`;
         window.open(url, "_blank");
     }
 
@@ -246,7 +246,12 @@
     function calc() {
         if(!userPos || !ds) return;
         lastApiCall = Date.now();
-        ds.route({ origin: userPos, destination: {lat: schedules[curr][idx].la, lng: schedules[curr][idx].ln}, travelMode: google.maps.TravelMode.DRIVING }, (res, stat) => {
+        ds.route({ 
+            origin: userPos, 
+            destination: {lat: schedules[curr][idx].la, lng: schedules[curr][idx].ln}, 
+            travelMode: google.maps.TravelMode.DRIVING,
+            avoidHighways: true // OMIJANIE AUTOSTRAD I DRÓG EKSPRESOWYCH
+        }, (res, stat) => {
             if(stat === 'OK') { 
                 dr.setDirections(res); liveDelay = Math.round((res.routes[0].legs[0].duration.value / 60) * 1.15);
                 const step = res.routes[0].legs[0].steps[0]; currentNextManeuverLoc = step.end_location;
